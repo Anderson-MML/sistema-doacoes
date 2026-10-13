@@ -1,0 +1,39 @@
+✔ migração complementar é repetível e preserva dados, metas, triggers e views (6910.8949ms)
+✔ migração recusa base antiga/mista e desfaz alterações (439.1898ms)
+✔ catálogo público usa view e mantém aliases sem expor contatos (395.5175ms)
+✔ produto e meta são criados separadamente e unidade em uso é protegida (542.5412ms)
+✔ renovar zera a nova meta e preserva o histórico anterior (500.0503ms)
+✔ renovação que falha não encerra a meta original (417.6411ms)
+✔ login, revogação, expiração, cargo e usuário inativo são respeitados (718.981ms)
+✔ agendar só promete; PF/PJ e fuso são preservados (462.968ms)
+✔ modelo exige meta como string e rejeita CPF/CNPJ, frações e campos indevidos (279.454ms)
+✔ seleção de meta antiga é recusada após renovação (379.6868ms)
+✔ reenvio concorrente devolve uma reserva e o mesmo código privado (335.3103ms)
+✔ retry recupera reserva mesmo após tempo passar e meta fechar (415.4381ms)
+✔ capacidade conta Confirmado, última vaga e cancelamento (498.2313ms)
+✔ código errado não permite consultar/remarcar e vaga lotada mantém horário original (445.0806ms)
+✔ recebimento parcial soma somente o que chegou e não conclui promessa (518.9264ms)
+✔ idempotência de recebimento compara corpo e usuário e não duplica totais (427.9031ms)
+✔ recebimento espontâneo sem meta entra no mês sem preencher termômetro (451.7821ms)
+✔ meta de outro produto, data futura, produto inativo e item não prometido são recusados sem cabeçalho órfão (386.8962ms)
+✔ estorno preserva registros, corrige mês original e exige motivo (492.0573ms)
+✔ conclusão parcial exige decisão explícita e registra itens entregues/cancelados (484.9006ms)
+✔ conclusão integral permite excedente e limita só a barra, não o percentual real (458.8864ms)
+✔ IDs bigint maiores que Number seguro mantêm precisão nas respostas e rotas (567.8967ms)
+✔ contrato do frontend envia PF/PJ e meta, e recupera resposta perdida com API real local (474.3666ms)
+✔ CORS, JSON inválido, autenticação e campos de autoria indevidos são bloqueados (440.5733ms)
+✔ 25 verificações SQL originais passam e rollback não altera metas da API (460.9528ms)
+✔ SQL de demonstração original produz cinco metas e não admite carga repetida (702.2691ms)
+✔ recebimento com item não prometido e doador incompatível falha integralmente (474.3946ms)
+✔ recebimento idempotente não permite reaproveitar chave de outro administrador (475.6312ms)
+✔ recebimento de entrega encerrada só é aceito se ocorreu antes do encerramento (416.0074ms)
+✔ metas duplicadas, frações e acesso público ao histórico são recusados (395.166ms)
+✔ role limitada do exemplo executa API/triggers e não pode apagar histórico (2084.4533ms)
+ℹ tests 31
+ℹ suites 0
+ℹ pass 31
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 25772.5614

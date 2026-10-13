@@ -1,0 +1,55 @@
+# API 2.0.0 — contrato de integração
+
+Contrato completo: `openapi.json`. URL local: `http://localhost:3000`. Nenhuma URL pública foi criada.
+
+## Agendamento
+
+Consultar `GET /itens` para obter produto e meta atuais. Campos `quantidade_atual`/`quantidade_necessaria` são aliases do total arrecadado/meta, sem colunas antigas no catálogo.
+
+Enviar `POST /agendamentos` com cabeçalho `Idempotency-Key` aleatório de 16–128 caracteres e preservar corpo/chave até confirmação:
+
+```json
+{
+  "doador": {"nome":"Pessoa fictícia","email":"teste@example.com","telefone":"11999999999","tipo_doador":"PF"},
+  "data":"2030-02-20", "horario":"14:00",
+  "itens":[{"id_item":1,"id_necessidade":"1","quantidade_doada":2}]
+}
+```
+
+IDs e data acima são exemplos fictícios: usar valores reais retornados pela API e horários futuros autorizados. Sucesso novo: 201; repetição do mesmo corpo/chave: 200 com o mesmo agendamento/código. 409 para vaga lotada, meta alterada/atendida ou chave reutilizada com outro corpo. O código privado só autoriza aquele agendamento e não permite operar rotas ONG.
+
+## Produtos e metas
+
+Administrador ativo autentica em `POST /auth/login`; enviar o token em `Authorization: Bearer ...`. `POST/PUT /itens` recebe nome, unidade, categoria de suprimento e ID de urgência. Não recebe meta ou quantidade atual.
+
+`POST /admin/necessidades` recebe `{ "id_item": 1, "id_categoria": 1, "quantidade_meta": 60 }`. Para renovar: `POST /admin/necessidades/{id}/renovar` com categoria/meta novas. O fechamento e a nova meta são atômicos; histórico não é apagado. Há rotas para encerrar/cancelar e listar o histórico.
+
+## Recebimentos efetivos
+
+`POST /doacoes` exige token ONG e `Idempotency-Key` em formato UUID. Informar a data REAL da entrega com fuso, produtos e quantidades efetivamente recebidas:
+
+```json
+{
+  "id_agendamento":1,
+  "ocorrido_em":"2026-10-12T14:00:00-03:00",
+  "itens":[{"id_item":1,"id_necessidade":"1","quantidade_recebida":2}]
+}
+```
+
+Recebimento pode ser parcial. Para uma entrega espontânea, omitir agendamento/doador ou enviar null. `id_necessidade` é obrigatório em cada item: enviar uma string para vincular ou null para contar somente no histórico mensal. A API não escolhe silenciosamente a meta. As regras do banco impedem produto/meta incompatíveis, produto inativo, entrega futura e vínculo cancelado.
+
+Corpo/UUID/usuário idênticos retornam o recebimento original, sem somar novamente. Outro corpo ou outro administrador com a mesma chave retorna 409. O corpo antigo apenas com `id_agendamento` não é aceito. Autoria é derivada da sessão, nunca aceita do cliente.
+
+`PATCH /doacoes/{id}/estornar` recebe `{ "motivo": "Correção do lançamento" }`. Preserva o registro, remove sua contribuição do total e corrige o mês original. `PATCH /admin/agendamentos/{id}/concluir` recebe `{}` se tudo foi entregue, ou `{ "motivo_pendencias": "Doador encerrou entrega parcial" }` se faltarem itens. Não há conclusão automática ao confirmar recebimento.
+
+## Relatórios e privacidade
+
+`GET /admin/arrecadacao/mensal?mes=2026-10` retorna arrecadação confirmada por produto/nome/unidade e mês civil de São Paulo, com totais como strings. Não sumarizar unidades diferentes. Histórico de metas: `GET /admin/necessidades/historico`. Ambos são privados.
+
+IDs bigint de meta/recebimento são strings decimais; produto/agendamento continuam inteiros. Agendamento retorna hora local sem sufixo Z, acompanhada de `fuso_horario`. Datas de recebimentos são timestamps com fuso. Quantidades do corpo são inteiros positivos, sem frações.
+
+`GET /ready` exige banco e complemento instalados. Falhas de negócio retornam envelope `{erro:{codigo,mensagem},request_id}`; não expõem SQL, credenciais nem contatos em rotas públicas. Sessões são revogáveis; desativar usuário bloqueia sua sessão existente. Limites de tentativas em memória não substituem proteção distribuída da hospedagem.
+
+## Pendências de ambiente
+
+Aplicar complemento/grants por responsável autorizado, confirmar dados persistentes e administrador, configurar CORS/TLS/segredos, publicar API e configurar frontend. Nenhuma migração é executada ao iniciar servidor. Concorrência multi-instância e permissões reais devem ser testadas pela equipe. Regras de horário, encerramento parcial e renovação dependem do aceite da ONG.
