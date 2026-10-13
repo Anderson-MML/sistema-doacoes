@@ -106,6 +106,7 @@ function createApp({ store,config,clock=()=>new Date(),logger=console }) {
     else if (err.code==='23503') { status=422;code='REFERENCIA_INVALIDA';message='Referência a registro inexistente.'; }
     else if (err.code==='23505') { status=409;code='CONFLITO';message='Registro já existente.'; }
     else if (err.code==='22003' || err.code==='23514') { status=422;code='QUANTIDADE_INVALIDA';message='Quantidade fora do limite permitido.'; }
+    else if (err.code==='LT001') { status=503;code='ESTRUTURA_INCOMPATIVEL';message='A estrutura do banco está incompatível com esta versão da API. Revise a migração antes de continuar.'; }
     else if (err.code==='P0001') { status=409;code='REGRA_DO_BANCO';message='Operação incompatível com as regras do banco. Confira produto, meta, unidade, data e situação da entrega.'; }
     else if (!(err instanceof ApiError)) { status=503;code='SERVICO_INDISPONIVEL';message='Serviço indisponível. Tente novamente.';logger.error({ request_id:req.requestId,codigo:err.code || 'INTERNAL' }); }
     res.status(status).json({ erro:{ codigo:code,mensagem:message },request_id:req.requestId });

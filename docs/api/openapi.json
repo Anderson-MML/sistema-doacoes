@@ -74,8 +74,19 @@
                 }
               }
             }
+          },
+          "503": {
+            "description": "Estrutura incompatível (ESTRUTURA_INCOMPATIVEL) ou banco indisponível (SERVICO_INDISPONIVEL). Sem detalhes internos.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
           }
-        }
+        },
+        "description": "Confere estrutura do complemento a cada chamada usando o mesmo contrato da migração. Divergências impedem prontidão; /health verifica somente o processo."
       }
     },
     "/auth/login": {

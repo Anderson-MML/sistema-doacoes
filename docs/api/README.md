@@ -53,3 +53,7 @@ IDs bigint de meta/recebimento são strings decimais; produto/agendamento contin
 ## Pendências de ambiente
 
 Aplicar complemento/grants por responsável autorizado, confirmar dados persistentes e administrador, configurar CORS/TLS/segredos, publicar API e configurar frontend. Nenhuma migração é executada ao iniciar servidor. Concorrência multi-instância e permissões reais devem ser testadas pela equipe. Regras de horário, encerramento parcial e renovação dependem do aceite da ONG.
+
+## Correção de estrutura — 13/10/2026
+
+A migração e o `/ready` agora compartilham a validação estrutural das tabelas de apoio. Incompatibilidades interrompem a migração e retornam 503 no `/ready`. Ver `docs/api/CORRECAO-VALIDACAO-ESTRUTURA-13-10-2026.md` (a partir da raiz do repositório). Para regenerar a migração após mudar o contrato, executar `node scripts/build-migration.js` na pasta backend; esse comando não acessa o banco.

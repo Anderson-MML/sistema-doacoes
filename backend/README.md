@@ -15,3 +15,7 @@ Contratos OpenAPI: ../docs/api/openapi.json. São 34 operações HTTP em 30 cami
 Os testes incluem um cliente HTTP de referência em test/fixtures/cliente-agendamento.mjs para conferir o contrato e o retry. Esse arquivo é um apoio ao teste, não uma implementação ou publicação de tela do frontend.
 
 Ainda falta configurar e aplicar o complemento no Neon autorizado, criar administrador, publicar a API com HTTPS e integrar ao frontend do grupo. Nenhuma migração ou seed é executada ao iniciar servidor; não houve alteração de Neon ou GitHub nesta preparação.
+
+## Correção de estrutura — 13/10/2026
+
+A migração e o `/ready` agora compartilham a validação estrutural das tabelas de apoio. Incompatibilidades interrompem a migração e retornam 503 no `/ready`. Ver `docs/api/CORRECAO-VALIDACAO-ESTRUTURA-13-10-2026.md` (a partir da raiz do repositório). Para regenerar a migração após mudar o contrato, executar `node scripts/build-migration.js` na pasta backend; esse comando não acessa o banco.

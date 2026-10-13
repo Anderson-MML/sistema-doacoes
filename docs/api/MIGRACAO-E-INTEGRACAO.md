@@ -67,3 +67,7 @@ O frontend deve consultar GET /itens e preservar id_necessidade como string na s
 - A ficha da tarefa 20 continua com vídeo pendente; ao atualizar a narrativa, usar “arrecadação confirmada” em vez de “estoque”.
 
 Não marcar as tarefas como entregues em produção somente com base nestes testes locais.
+
+## Correção de estrutura — 13/10/2026
+
+A migração e o `/ready` agora compartilham a validação estrutural das tabelas de apoio. Incompatibilidades interrompem a migração e retornam 503 no `/ready`. Ver `docs/api/CORRECAO-VALIDACAO-ESTRUTURA-13-10-2026.md` (a partir da raiz do repositório). Para regenerar a migração após mudar o contrato, executar `node scripts/build-migration.js` na pasta backend; esse comando não acessa o banco.
