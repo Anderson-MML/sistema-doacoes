@@ -1,0 +1,24 @@
+{
+  "name": "lar-ternura-api",
+  "version": "2.0.0",
+  "private": true,
+  "main": "src/server.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "test": "node --test",
+    "db:migrate": "node scripts/migrate.js",
+    "admin:create": "node scripts/create-admin.js"
+  },
+  "dependencies": {
+    "express": "4",
+    "pg": "8",
+    "dotenv": "16"
+  },
+  "devDependencies": {
+    "@electric-sql/pglite": "0.3"
+  },
+  "packageManager": "pnpm@11.25.0"
+}
