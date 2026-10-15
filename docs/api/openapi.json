@@ -65,8 +65,8 @@
               }
             }
           },
-          "default": {
-            "description": "400 JSON; 401 autenticação; 403 origem/cargo; 404 registro; 409 conflito/regra do banco; 413 corpo >32KB; 422 validação; 429 tentativas; 503 banco/esquema indisponível",
+          "503": {
+            "description": "Estrutura incompatível (ESTRUTURA_INCOMPATIVEL) ou banco indisponível (SERVICO_INDISPONIVEL). Sem detalhes internos.",
             "content": {
               "application/json": {
                 "schema": {
@@ -75,8 +75,8 @@
               }
             }
           },
-          "503": {
-            "description": "Estrutura incompatível (ESTRUTURA_INCOMPATIVEL) ou banco indisponível (SERVICO_INDISPONIVEL). Sem detalhes internos.",
+          "default": {
+            "description": "400 JSON; 401 autenticação; 403 origem/cargo; 404 registro; 409 conflito/regra do banco; 413 corpo >32KB; 422 validação; 429 tentativas; 503 banco/esquema indisponível",
             "content": {
               "application/json": {
                 "schema": {
@@ -1102,6 +1102,16 @@
           }
         ],
         "responses": {
+          "200": {
+            "description": "Repetição idempotente: mesmo resultado original, sem nova gravação",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AgendamentoResposta"
+                }
+              }
+            }
+          },
           "201": {
             "description": "Sucesso",
             "content": {
@@ -1118,16 +1128,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Erro"
-                }
-              }
-            }
-          },
-          "200": {
-            "description": "Repetição idempotente: mesmo resultado original, sem nova gravação",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/AgendamentoResposta"
                 }
               }
             }
@@ -1622,6 +1622,16 @@
           }
         ],
         "responses": {
+          "200": {
+            "description": "Repetição idempotente: mesmo resultado original, sem nova gravação",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RecebimentoResposta"
+                }
+              }
+            }
+          },
           "201": {
             "description": "Sucesso",
             "content": {
@@ -1638,16 +1648,6 @@
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/Erro"
-                }
-              }
-            }
-          },
-          "200": {
-            "description": "Repetição idempotente: mesmo resultado original, sem nova gravação",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/RecebimentoResposta"
                 }
               }
             }
@@ -1828,6 +1828,45 @@
                 "$ref": "#/components/schemas/EstornoEntrada"
               }
             }
+          }
+        }
+      }
+    },
+    "/calendario/feriados/{ano}": {
+      "get": {
+        "summary": "Consultar calendário informativo da BrasilAPI",
+        "operationId": "get_calendario_feriados",
+        "tags": [
+          "Público"
+        ],
+        "security": [],
+        "description": "Consulta opcional. Não bloqueia agendamentos nem altera vagas. HTTP 200 também pode conter status indisponivel; nesse caso feriados é null. Datas e tipos são informações do provedor, não regra de funcionamento da ONG.",
+        "parameters": [
+          {
+            "name": "ano",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1900,
+              "maximum": 2199
+            },
+            "example": 2026
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Estado explícito da consulta de calendário",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CalendarioFeriados"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Ano inválido"
           }
         }
       }
@@ -2681,6 +2720,110 @@
             "nullable": true
           }
         }
+      },
+      "CalendarioFeriados": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "status",
+              "fonte",
+              "ano",
+              "consultado_em",
+              "feriados"
+            ],
+            "properties": {
+              "status": {
+                "type": "string",
+                "enum": [
+                  "disponivel"
+                ]
+              },
+              "fonte": {
+                "type": "string",
+                "enum": [
+                  "BrasilAPI"
+                ]
+              },
+              "ano": {
+                "type": "integer"
+              },
+              "consultado_em": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "feriados": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": [
+                    "data",
+                    "nome",
+                    "tipo"
+                  ],
+                  "properties": {
+                    "data": {
+                      "type": "string",
+                      "format": "date"
+                    },
+                    "nome": {
+                      "type": "string"
+                    },
+                    "tipo": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "status",
+              "fonte",
+              "ano",
+              "consultado_em",
+              "feriados",
+              "motivo"
+            ],
+            "properties": {
+              "status": {
+                "type": "string",
+                "enum": [
+                  "indisponivel"
+                ]
+              },
+              "fonte": {
+                "type": "string",
+                "enum": [
+                  "BrasilAPI"
+                ]
+              },
+              "ano": {
+                "type": "integer"
+              },
+              "consultado_em": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "feriados": {
+                "type": "array",
+                "nullable": true,
+                "enum": [
+                  null
+                ],
+                "items": {
+                  "type": "object"
+                }
+              },
+              "motivo": {
+                "type": "string",
+                "description": "TEMPO_LIMITE, FALHA_DE_REDE, RESPOSTA_INVALIDA ou HTTP_<status>"
+              }
+            }
+          }
+        ]
       }
     }
   }

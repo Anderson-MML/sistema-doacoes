@@ -2,6 +2,8 @@
 
 API 2.0.0, compatibilizada com o banco do Vinicius e validada localmente. Este pacote contém somente o backend e sua documentação; não publica ou substitui o frontend da tarefa 13/14.
 
+Atualização da integração externa: esta branch acrescenta calendário informativo da BrasilAPI e uma página de integração em `/integracao/agendamento/`. Ela permite conferir o fluxo no navegador e não substitui o frontend definitivo da equipe. Instruções em [BRASILAPI_FERIADOS.md](../docs/BRASILAPI_FERIADOS.md).
+
 ## Executar
 
 Na pasta backend, instalar dependências com `pnpm install --frozen-lockfile` e executar `pnpm test`. Os testes criam banco PGlite descartável e não usam DATABASE_URL de produção. Os cinco SQL originais em ../banco-vinicius são dependências desses testes e referências da entrega do Vinicius.
@@ -10,7 +12,7 @@ Para executar a API, configurar variáveis privadas conforme .env.example, aplic
 
 ## Documentação e escopo
 
-Contratos OpenAPI: ../docs/api/openapi.json. São 34 operações HTTP em 30 caminhos. A modelagem do banco pertence ao Vinicius; o complemento api_apoio precisa ser revisado com ele antes da aplicação no ambiente compartilhado.
+Contratos OpenAPI: ../docs/api/openapi.json. São 35 operações HTTP em 31 caminhos, incluindo a consulta de calendário. A modelagem do banco pertence ao Vinicius; a aplicação do complemento no ambiente compartilhado deve seguir a conferência de destino e o alinhamento da equipe.
 
 Os testes incluem um cliente HTTP de referência em test/fixtures/cliente-agendamento.mjs para conferir o contrato e o retry. Esse arquivo é um apoio ao teste, não uma implementação ou publicação de tela do frontend.
 
