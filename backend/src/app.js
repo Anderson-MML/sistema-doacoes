@@ -1,15 +1,18 @@
 const express=require('express');
+const {join}=require('node:path');
+const {criarClienteFeriados}=require('./integrations/brasilapi-feriados');
 const { randomUUID }=require('node:crypto');
 const V=require('./validation');
 const SEC=require('./security');
 const { ApiError,fail }=require('./errors');
 const wrap=fn=>(req,res,next)=>Promise.resolve(fn(req,res,next)).catch(next);
-function createApp({ store,config,clock=()=>new Date(),logger=console }) {
+function createApp({ store,config,clock=()=>new Date(),logger=console,calendario=criarClienteFeriados() }) {
   const app=express();app.disable('x-powered-by');app.set('trust proxy',config.proxyHops || false);
   app.use((req,res,next)=> {
     req.requestId=randomUUID();res.set({ 'X-Request-Id':req.requestId,'X-Content-Type-Options':'nosniff','Cache-Control':'no-store' });
     const origin=req.get('Origin');
-    if (origin && !config.origins.includes(origin)) return next(new ApiError(403,'ORIGEM_INVALIDA','Origem não permitida.'));
+    const sameOrigin=origin===`${req.protocol}://${req.get('host')}`;
+    if (origin && !sameOrigin && !config.origins.includes(origin)) return next(new ApiError(403,'ORIGEM_INVALIDA','Origem não permitida.'));
     if (origin) { res.set('Access-Control-Allow-Origin',origin);res.vary('Origin');res.set('Access-Control-Allow-Headers','Content-Type, Authorization, Idempotency-Key');res.set('Access-Control-Allow-Methods','GET, POST, PUT, PATCH, DELETE, OPTIONS'); }
     if (req.method==='OPTIONS') return res.sendStatus(204);
     next();
@@ -29,6 +32,16 @@ function createApp({ store,config,clock=()=>new Date(),logger=console }) {
   const dummyHash=SEC.hashPassword(SEC.token());
   app.get('/health',(req,res)=>res.json({ status:'ok',service:'lar-ternura-api',timestamp:clock().toISOString() }));
   app.get('/ready',wrap(async(req,res)=> { await store.ready();res.json({ status:'ok',database:'connected' }); }));
+  // Informação opcional: falha externa não interfere em /ready ou agendamentos.
+  app.get('/calendario/feriados/:ano',wrap(async(req,res)=> {
+    if (!/^\d{4}$/.test(req.params.ano) || Number(req.params.ano)<1900 || Number(req.params.ano)>2199) {
+      fail(422,'ANO_INVALIDO','Informe um ano entre 1900 e 2199.');
+    }
+    res.json(await calendario.consultarAno(Number(req.params.ano)));
+  }));
+  app.use('/integracao/agendamento',express.static(join(__dirname,'../../frontend/integracao'), {
+    dotfiles:'deny',setHeaders:res=>res.set('Content-Security-Policy',"default-src 'self'; script-src 'self'; style-src 'self'; connect-src 'self'; img-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'none'; form-action 'self'")
+  }));
   app.post('/auth/login',SEC.limiter(10,15*60*1000),wrap(async(req,res)=> {
     V.object(req.body,['email','senha']);const email=V.email(req.body.email);const password=V.string(req.body.senha,'Senha',128);
     const user=await store.userByEmail(email);
