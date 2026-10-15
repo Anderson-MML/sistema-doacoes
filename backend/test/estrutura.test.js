@@ -70,5 +70,10 @@ test('verificação posterior rejeita índice preexistente errado e desfaz DDL n
 test('migração distribuída usa exatamente o mesmo validador do ready',()=>{
  const folder=join(root,'backend/schema');
  const expected=readFileSync(join(folder,'base-check.sql'),'utf8')+'\n-- Antes de qualquer DDL: recusar objetos existentes divergentes.\n'+validationSql(true)+'\n'+readFileSync(join(folder,'complemento.sql'),'utf8')+'\n-- Depois do DDL: exigir todas as garantias instaladas.\n'+validationSql(false)+'\nCOMMIT;\n';
- assert.equal(migration,expected);
+ // CRLF e LF são equivalentes; todo o restante do SQL continua sendo conferido.
+ const normalizeLineEndings=text=>text.replace(/\r\n/g,'\n');
+ assert.equal(normalizeLineEndings(migration),normalizeLineEndings(expected));
+ // Regressão Windows: mesmo SQL com CRLF deve passar, mas mudança no SQL deve falhar.
+ assert.equal(normalizeLineEndings(migration.replace(/\r?\n/g,'\r\n')),normalizeLineEndings(expected));
+ assert.notEqual(normalizeLineEndings(migration.replace('COMMIT;','ROLLBACK;')),normalizeLineEndings(expected));
 });
