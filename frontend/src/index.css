@@ -1,0 +1,81 @@
+@import "tailwindcss";
+
+/*
+  Tokens do projeto. Todas as combinações texto/fundo abaixo passam de 4,5:1 (WCAG 2.1 AA).
+  As cores de urgência NÃO usam o hex do banco (#EF4444, #F59E0B, #10B981), que falha em
+  contraste com texto branco; o front mapeia pelo nível (1, 2, 3).
+*/
+@theme {
+  --font-sans: "Atkinson Hyperlegible", "Segoe UI", system-ui, -apple-system, sans-serif;
+
+  --color-tinta: #22304a;        /* texto principal: 12,6:1 sobre branco */
+  --color-tinta-suave: #4a5871;  /* texto secundário: 7,3:1 sobre branco */
+  --color-papel: #ffffff;
+  --color-nevoa: #eef3f7;        /* fundo de áreas secundárias */
+  --color-linha: #c9d4df;        /* bordas decorativas */
+  --color-linha-forte: #6b7a90;  /* bordas de campos: 4,5:1 (WCAG 1.4.11 pede 3:1) */
+
+  --color-lar: #1e5aa8;          /* ação principal: 6,6:1 com branco */
+  --color-lar-escuro: #164682;
+  --color-lar-claro: #dce8f7;
+
+  --color-alta: #b42318;         /* 6,5:1 com branco */
+  --color-alta-claro: #fde8e6;
+  --color-media: #fdb022;        /* usar SEMPRE com texto escuro */
+  --color-media-texto: #3a2a00;  /* 9,9:1 sobre --color-media */
+  --color-media-claro: #fff4d6;
+  --color-baixa: #067647;        /* 5,6:1 com branco */
+  --color-baixa-claro: #dff5ea;
+
+  --color-sucesso: #067647;
+  --color-erro: #b42318;
+}
+
+@layer base {
+  html {
+    font-size: 112.5%; /* 18px: público majoritariamente mais velho */
+    -webkit-text-size-adjust: 100%;
+  }
+
+  body {
+    @apply bg-papel text-tinta font-sans antialiased;
+    line-height: 1.55;
+  }
+
+  /* Foco sempre visível e espesso, para quem navega por teclado. */
+  :focus-visible {
+    outline: 3px solid var(--color-lar);
+    outline-offset: 3px;
+    border-radius: 4px;
+  }
+}
+
+/* O foco é levado ao <main> ao trocar de página; ali o contorno não ajuda ninguém. */
+#conteudo:focus { outline: none; }
+
+/* Conteúdo só para leitores de tela */
+.so-leitor {
+  position: absolute !important;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0);
+  white-space: nowrap; border: 0;
+}
+
+/* Link "pular para o conteúdo" aparece ao receber foco */
+.pular-link {
+  position: absolute; left: 1rem; top: -4rem;
+  z-index: 100;
+  @apply bg-lar text-white px-4 py-3 rounded-md font-bold;
+}
+.pular-link:focus { top: 1rem; }
+
+dialog::backdrop { background: rgb(34 48 74 / 0.55); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
