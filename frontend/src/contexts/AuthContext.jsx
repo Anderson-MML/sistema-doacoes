@@ -29,7 +29,7 @@ export function AuthProvider({ children }) {
     return resposta.usuario;
   }, []);
 
-  /** Revoga a sessão na API (POST /auth/logout) e apaga o token local. */
+  /** Revoga a sessão na API e apaga o token local. */
   const sair = useCallback(async () => {
     await sairDaSessao();
     sessao.apagar();

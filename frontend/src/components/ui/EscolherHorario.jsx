@@ -8,10 +8,7 @@ const chip = 'flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border-
   + 'has-[:disabled]:cursor-not-allowed has-[:disabled]:border-linha has-[:disabled]:text-tinta-suave has-[:disabled]:line-through '
   + 'has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-lar';
 
-/**
- * Dia + horário com vagas reais (GET /disponibilidade). Horários lotados aparecem riscados
- * e desabilitados, com "lotado" em texto para leitores de tela.
- */
+
 export function EscolherHorario({ data, horario, aoMudar, erroData, erroHorario, idData = 'data', idHorario = 'hora' }) {
   const [estado, setEstado] = useState({ carregando: false, horarios: null, erro: null });
 

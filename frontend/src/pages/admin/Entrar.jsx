@@ -79,7 +79,7 @@ export default function Entrar() {
             </div>
           )}
           <Link to="/" className="mt-6 inline-flex min-h-11 items-center text-lar underline underline-offset-2">
-            Ir para a página de doações
+            Voltar para o site de doações
           </Link>
         </div>
       </main>

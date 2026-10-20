@@ -1,9 +1,5 @@
 import { useEffect, useId, useRef } from 'react';
 
-/**
- * Janela modal baseada no <dialog> nativo: prende o foco, fecha com Esc e
- * devolve o foco ao botão que a abriu, sem biblioteca extra.
- */
 export function Dialogo({ aberto, aoFechar, titulo, descricao, children, largura = 'max-w-lg' }) {
   const ref = useRef(null);
   const idTitulo = useId();

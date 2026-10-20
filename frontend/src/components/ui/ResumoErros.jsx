@@ -1,10 +1,5 @@
 import { useEffect, useRef } from 'react';
 
-/**
- * Lista de erros no topo do formulário, com links para cada campo (padrão GOV.UK).
- * Recebe o foco ao aparecer, para quem usa leitor de tela saber o que corrigir.
- * `erros` = { idDoCampoNoDOM: 'mensagem' } ; `rotulos` = { idDoCampoNoDOM: 'Nome do campo' }
- */
 export function ResumoErros({ erros, rotulos = {}, gatilho }) {
   const ref = useRef(null);
   const lista = Object.entries(erros).filter(([, msg]) => msg);

@@ -2,10 +2,6 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 
 const AVISO_LENTO_MS = 3000;
 
-/**
- * Carrega dados de uma função da API e expõe os estados que toda tela precisa.
- * `demorando` vira true após 3 s: o servidor gratuito do Render pode estar acordando.
- */
 export function useCarregar(funcao, dependencias = []) {
   const [estado, setEstado] = useState({ dados: null, erro: null, carregando: true, demorando: false });
   const versao = useRef(0);

@@ -1,8 +1,7 @@
 import { useEffect, useState } from 'react';
 
-const CONSULTA = '(min-width: 1024px)'; // mesmo ponto do "lg" do Tailwind
+const CONSULTA = '(min-width: 1024px)'; // mesmo ponto do lg do Tailwind
 
-/** true em telas largas. Evita renderizar dois conjuntos de filtros (ids duplicados). */
 export function useTelaGrande() {
   const [grande, setGrande] = useState(() => window.matchMedia?.(CONSULTA).matches ?? true);
   useEffect(() => {

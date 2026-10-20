@@ -1,9 +1,5 @@
 import { cloneElement, useId } from 'react';
 
-/**
- * Envolve um <input>, <select> ou <textarea> com rótulo, dica e erro ligados por
- * aria-describedby. O filho recebe id, aria-invalid e aria-describedby automaticamente.
- */
 export function Campo({ id: idFixo, rotulo, dica, erro, obrigatorio = false, children, className = '' }) {
   const idGerado = useId();
   const id = idFixo ?? idGerado;
@@ -31,7 +27,6 @@ export function Campo({ id: idFixo, rotulo, dica, erro, obrigatorio = false, chi
   );
 }
 
-/** Base visual de campos. Sem largura nem cor de borda, para cada uso decidir sem conflito de classes. */
 export const ESTILO_CAMPO_BASE = 'min-h-11 rounded-lg border-2 bg-papel px-3 py-2 text-base '
   + 'text-tinta placeholder:text-tinta-suave disabled:bg-nevoa';
 export const ESTILO_CAMPO = `${ESTILO_CAMPO_BASE} w-full`;

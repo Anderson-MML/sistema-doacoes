@@ -1,5 +1,3 @@
-// Guarda neste aparelho o link privado de cada agendamento feito aqui, para o doador
-// voltar a ele sem precisar copiar o código. O código também vai no link (após o #).
 const CHAVE = 'lar-ternura:meus-agendamentos';
 
 export function linkDoAgendamento(id, token) {

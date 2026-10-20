@@ -123,6 +123,8 @@ function agendamento(a, { comDoador = false } = {}) {
       return {
         id_item: ia.id_item, id_necessidade: ia.id_necessidade ? String(ia.id_necessidade) : null,
         nome_item: i.nome_item, unidade_medida: i.unidade_medida, quantidade_doada: ia.quantidade_doada, status_item: ia.status_item,
+        // Proposta para a API (itens 1/9 do PDF de ajustes): total confirmado por item, sem depender de GET /doacoes.
+        quantidade_recebida: recebidoNoAgendamento(a.id_agendamento, ia.id_item),
       };
     }),
     ...(comDoador && d ? { doador: { id_doador: d.id_doador, nome: d.nome, email: d.email, telefone: d.telefone, tipo_doador: d.tipo_doador } } : {}),
@@ -410,11 +412,39 @@ function getMensal({ query }) {
 
 // ================================================================ admin: agendamentos
 
+const STATUS_AGENDAMENTO = ['Pendente', 'Confirmado', 'Concluído', 'Cancelado'];
+
+/**
+ * Busca do item 3 (PDF de ajustes), espelhando o SQL proposto ao backend:
+ * código exato, nome (ILIKE: ignora maiúsculas, não ignora acentos), e-mail, e trecho do
+ * telefone só com dígitos (4 ou mais).
+ */
+function combinaBusca(a, q) {
+  const d = db.doadores.find((x) => x.id_doador === a.id_doador);
+  const texto = q.trim().toLowerCase();
+  const codigo = /^#?\d+$/.test(texto) ? Number(texto.replace('#', '')) : null;
+  const digitos = /^[\d\s().+#-]+$/.test(texto) ? texto.replace(/\D/g, '') : '';
+  if (a.id_agendamento === codigo) return true;
+  if (!d) return false;
+  return d.nome.toLowerCase().includes(texto)
+    || normEmail(d.email).includes(texto)
+    || (digitos.length >= 4 && d.telefone.replace(/\D/g, '').includes(digitos));
+}
+
 function getAgendamentosAdmin({ query }) {
   let lista = db.agendamentos;
   if (query.data) lista = lista.filter((a) => localSP(a.data_hora_agendada).startsWith(query.data));
-  if (query.status) lista = lista.filter((a) => a.status_agendamento === query.status);
-  lista = [...lista].sort((a, b) => a.data_hora_agendada.localeCompare(b.data_hora_agendada));
+  if (query.status) {
+    const status = query.status.split(',').map((s) => s.trim());
+    if (status.some((s) => !STATUS_AGENDAMENTO.includes(s))) invalido('Status inválido.');
+    lista = lista.filter((a) => status.includes(a.status_agendamento));
+  }
+  if (query.q !== undefined) {
+    if (!ehTexto(query.q, 100)) invalido('Busca: tamanho inválido.');
+    lista = lista.filter((a) => combinaBusca(a, query.q));
+  }
+  // Item 1: do mais recente para o mais antigo (data da entrega).
+  lista = [...lista].sort((a, b) => b.data_hora_agendada.localeCompare(a.data_hora_agendada) || b.id_agendamento - a.id_agendamento);
   return paginar(lista.map((a) => agendamento(a, { comDoador: true })), query);
 }
 
@@ -439,6 +469,70 @@ function patchConcluir({ params, corpo = {} }) {
   a.status_agendamento = 'Concluído';
   salvar();
   return agendamento(a, { comDoador: true });
+}
+
+/**
+ * Item 9 (PDF de ajustes): registra o que chegou e conclui numa operação só.
+ * Corpo vazio = chegou tudo o que faltava. Com `itens`, só os informados chegaram.
+ * Cada item é somado à meta ABERTA ATUAL do produto (ou fica sem meta), para que a doação
+ * atrasada não falhe quando a meta original foi encerrada ou renovada.
+ */
+function postReceberEConcluir({ params, corpo = {}, cabecalhos, usuario }) {
+  const chave = cabecalhos['Idempotency-Key'];
+  if (!UUID.test(chave ?? '')) invalido('Cabeçalho Idempotency-Key deve ser um UUID.');
+  const a = agendamentoAdmin(params.id);
+  const escopo = `concluir:${usuario.id_usuario}`;
+  if (a.status_agendamento === 'Concluído' && !db.idempotencia[`${escopo}:${chave.toLowerCase()}`]) {
+    return { status: 200, corpo: { agendamento: agendamento(a, { comDoador: true }), doacao: null, repetido: true } };
+  }
+  return idempotente(escopo, chave.toLowerCase(), corpo, () => {
+    if (a.status_agendamento !== 'Pendente' && a.status_agendamento !== 'Confirmado') conflito('Agendamento cancelado não pode ser concluído.');
+    if (corpo.motivo_pendencias !== undefined && !ehTexto(corpo.motivo_pendencias, 500)) invalido('Motivo das pendências: tamanho inválido.');
+    const prometidos = db.itens_agendamento.filter((ia) => ia.id_agendamento === a.id_agendamento && ia.status_item === 'Agendado');
+    const falta = (ia) => Math.max(ia.quantidade_doada - recebidoNoAgendamento(a.id_agendamento, ia.id_item), 0);
+    const chegou = itensQueChegaram(corpo.itens, prometidos, falta);
+
+    const inativo = chegou.map((c) => item(c.id_item)).find((i) => !i.ativo);
+    if (inativo) conflito(`O produto ${inativo.nome_item} foi desativado e não pode ser recebido. Use "Chegou só uma parte" e deixe-o de fora.`);
+
+    const recebidoAgora = new Map(chegou.map((c) => [c.id_item, c.quantidade_recebida]));
+    const incompletos = prometidos.filter((ia) => (recebidoAgora.get(ia.id_item) ?? 0) < falta(ia));
+    if (incompletos.length && !corpo.motivo_pendencias?.trim()) {
+      falhar(409, 'ENTREGA_PARCIAL', 'Faltaram itens: informe o motivo para concluir.');
+    }
+
+    let r = null;
+    if (chegou.length) {
+      r = { id_recebimento: proximo('recebimentos'), chave_operacao: chave.toLowerCase(), id_doador: a.id_doador, id_agendamento: a.id_agendamento, ocorrido_em: new Date().toISOString(), status: 'Confirmado', motivo_estorno: null, registrado_em: new Date().toISOString(), registrado_por: usuario.id_usuario };
+      db.recebimentos.push(r);
+      for (const c of chegou) {
+        const i = item(c.id_item);
+        db.itens_recebimento.push({ id_recebimento: r.id_recebimento, id_item: i.id_item, id_necessidade: necessidadeAberta(i.id_item)?.id_necessidade ?? null, quantidade_recebida: c.quantidade_recebida, nome_item_registrado: i.nome_item, unidade_registrada: i.unidade_medida });
+      }
+    }
+    for (const ia of prometidos) ia.status_item = incompletos.includes(ia) ? 'Cancelado' : 'Entregue';
+    a.status_agendamento = 'Concluído';
+    const motivo = corpo.motivo_pendencias ? ': ' + corpo.motivo_pendencias.trim() : '';
+    a.observacoes = [a.observacoes, `Conclusão pela ONG #${usuario.id_usuario}${motivo}`].filter(Boolean).join('\n');
+    salvar();
+    return { agendamento: agendamento(a, { comDoador: true }), doacao: r ? recebimento(r) : null };
+  });
+}
+
+/** Sem `itens` no corpo: chegou tudo o que faltava. Com `itens`: só os informados, validados contra o prometido. */
+function itensQueChegaram(itens, prometidos, falta) {
+  if (itens === undefined) {
+    return prometidos.filter((ia) => falta(ia) > 0).map((ia) => ({ id_item: ia.id_item, quantidade_recebida: falta(ia) }));
+  }
+  if (!Array.isArray(itens) || itens.length > 100) invalido('Itens inválidos.');
+  const vistos = new Set();
+  return itens.map((it) => {
+    if (!ehInt(it?.id_item) || !ehInt(it?.quantidade_recebida)) invalido('Cada item precisa de id_item e quantidade_recebida inteira positiva.');
+    if (vistos.has(it.id_item)) invalido('Produto repetido.');
+    vistos.add(it.id_item);
+    if (!prometidos.some((ia) => ia.id_item === it.id_item)) conflito('Produto não prometido, cancelado ou já entregue neste agendamento.');
+    return { id_item: it.id_item, quantidade_recebida: it.quantidade_recebida };
+  });
 }
 
 // ================================================================ admin: recebimentos (/doacoes)
@@ -539,6 +633,7 @@ const ROTAS = [
   ['GET', '/admin/agendamentos', getAgendamentosAdmin, 'sessao'],
   ['GET', '/admin/agendamentos/:id', getAgendamentoAdmin, 'sessao'],
   ['PATCH', '/admin/agendamentos/:id/concluir', patchConcluir, 'sessao'],
+  ['POST', '/admin/agendamentos/:id/receber-e-concluir', postReceberEConcluir, 'sessao'],
   ['POST', '/doacoes', postDoacao, 'sessao'],
   ['GET', '/doacoes', getDoacoes, 'sessao'],
   ['GET', '/doacoes/:id', getDoacao, 'sessao'],

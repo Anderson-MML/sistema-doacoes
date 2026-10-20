@@ -14,13 +14,13 @@ import { hojeSP } from '../../utils/formatar.js';
 import { emailValido, telefoneValido, mascararTelefone, quantidadeValida, gerarUuid } from '../../utils/validar.js';
 import { lembrarAgendamento } from '../../utils/meusAgendamentos.js';
 
-const ROTULOS = { data: 'Dia da entrega', hora: 'Horário', nome: 'Nome', email: 'E-mail', telefone: 'Telefone', itens: 'Itens' };
+const ROTULOS = { data: 'Dia da entrega', hora: 'Horário', nome: 'Nome', email: 'E-mail', telefone: 'Telefone', itens: 'Itens', consentimento: 'Uso dos dados' };
 
 export default function Agendar() {
   useTitulo('Agendar entrega');
   const navegar = useNavigate();
   const { itens, definirQuantidade, remover, limpar } = useDoacao();
-  const [form, setForm] = useState({ data: '', hora: '', nome: '', email: '', telefone: '', tipo: 'PF' });
+  const [form, setForm] = useState({ data: '', hora: '', nome: '', email: '', telefone: '', tipo: 'PF', consentimento: false });
   const [erros, setErros] = useState({});
   const [tentativa, setTentativa] = useState(0);
   const [enviando, setEnviando] = useState(false);
@@ -46,6 +46,7 @@ export default function Agendar() {
     if (form.nome.trim().length < 2) e.nome = 'Informe seu nome.';
     if (!emailValido(form.email)) e.email = 'Informe um e-mail válido, como nome@exemplo.com.';
     if (!telefoneValido(form.telefone)) e.telefone = 'Informe um telefone com DDD.';
+    if (!form.consentimento) e.consentimento = 'Marque a caixa para o Lar poder falar com você sobre a entrega.';
     return e;
   }
 
@@ -83,7 +84,7 @@ export default function Agendar() {
       <div className="mx-auto max-w-3xl px-4 py-10">
         <h1 className="text-3xl font-bold">Agendar entrega</h1>
         <div className="mt-6">
-          <Vazio titulo="Sua doação ainda está vazia" acao={<BotaoLink to="/">Ver o que o Lar precisa</BotaoLink>}>
+          <Vazio titulo="Sua doação ainda está vazia" acao={<BotaoLink to="/doar">Ver o que o Lar precisa</BotaoLink>}>
             Escolha primeiro os itens que você pode levar.
           </Vazio>
         </div>
@@ -93,7 +94,7 @@ export default function Agendar() {
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-8">
-      <Link to="/" className="inline-flex min-h-11 items-center font-bold text-lar underline underline-offset-4">
+      <Link to="/doar" className="inline-flex min-h-11 items-center font-bold text-lar underline underline-offset-4">
         Voltar para a lista
       </Link>
       <h1 className="mt-2 text-3xl font-bold">Agendar entrega</h1>
@@ -103,7 +104,7 @@ export default function Agendar() {
         <ResumoErros erros={erros} rotulos={ROTULOS} gatilho={tentativa} />
         {erroGeral && (
           <Alerta tipo="erro" titulo="Não foi possível agendar."
-            acao={erroGeral.status === 409 && <BotaoLink to="/" variante="secundario">Atualizar a lista de necessidades</BotaoLink>}>
+            acao={erroGeral.status === 409 && <BotaoLink to="/doar" variante="secundario">Atualizar a lista de necessidades</BotaoLink>}>
             {erroGeral.message}
             {erroGeral.falhaDeRede && ' Clique de novo em Confirmar: o pedido não será duplicado.'}
           </Alerta>
@@ -163,6 +164,21 @@ export default function Agendar() {
               ))}
             </div>
           </fieldset>
+          {/* LGPD: o consentimento ainda não é gravado pela API; aqui ele só libera o envio. */}
+          <div className="flex flex-col gap-1">
+            <label className="flex cursor-pointer items-start gap-3 rounded-lg border-2 border-linha p-3">
+              <input id="consentimento" type="checkbox" checked={form.consentimento}
+                onChange={(e) => setForm((f) => ({ ...f, consentimento: e.target.checked }))}
+                aria-invalid={erros.consentimento ? true : undefined}
+                aria-describedby={erros.consentimento ? 'consentimento-erro' : undefined}
+                className="mt-1 size-6 shrink-0 accent-lar" />
+              <span>
+                Concordo que o Lar Ternura use meus dados (nome, e-mail e telefone) só para combinar esta entrega.
+                <span aria-hidden="true" className="text-erro"> *</span>
+              </span>
+            </label>
+            {erros.consentimento && <p id="consentimento-erro" className="text-sm font-bold text-erro">{erros.consentimento}</p>}
+          </div>
         </fieldset>
 
         <Botao type="submit" carregando={enviando} className="self-start px-8 text-lg">Confirmar agendamento</Botao>

@@ -1,11 +1,5 @@
-// Camada de adaptação para a API 2.0.0 do Anderson (openapi.json).
-// As telas usam só este arquivo. Ele traduz o contrato da API para o formato interno do front:
-//   - IDs internos sempre como string; ao enviar, id_item/id_agendamento/id_categoria voltam a número
-//     e id_necessidade/id_recebimento continuam string (bigint, nunca converter para Number).
-//   - Urgência interna sempre como { nivel, nome, cor }.
-//   - Totais que a API devolve como string (histórico, relatórios) viram número aqui.
 import { requisitar, requisitarCompleto } from './cliente.js';
-import { hojeSP, diaSP, mesAtualSP, partesSP, paraInstante } from '../utils/formatar.js';
+import { hojeSP, diaSP, diasDeAtraso, mesAtualSP, partesSP, paraInstante } from '../utils/formatar.js';
 
 const admin = { autenticado: true };
 const LIMITE = 100; // máximo aceito pela API por página
@@ -17,7 +11,6 @@ const idNum = (v) => (v === null || v === undefined || v === '' ? null : Number(
 
 let categoriasEmCache = null;
 
-/** Lista de urgências (GET /categorias), guardada em memória: muda raramente. */
 export async function listarCategorias() {
   if (!categoriasEmCache) {
     const lista = await requisitar('GET', '/categorias');
@@ -71,7 +64,10 @@ function agendamentoInterno(a, recebidos = new Map()) {
       nome_item: i.nome_item,
       unidade_medida: i.unidade_medida,
       quantidade_prometida: num(i.quantidade_doada),
-      quantidade_recebida: recebidos.get(`${a.id_agendamento}|${i.id_item}`) ?? 0,
+      // A API proposta devolve o total por item; sem ele, soma a partir de GET /doacoes.
+      quantidade_recebida: i.quantidade_recebida !== undefined
+        ? num(i.quantidade_recebida)
+        : recebidos.get(`${a.id_agendamento}|${i.id_item}`) ?? 0,
       status_item: i.status_item,
     })),
   };
@@ -103,10 +99,6 @@ const usuarioInterno = (u) => (u ? {
 export const verificarSaude = () => requisitar('GET', '/health');
 export const verificarProntidao = () => requisitar('GET', '/ready');
 
-/**
- * Termômetro. A API filtra busca e categoria; a prioridade é filtrada aqui porque
- * a tela permite marcar mais de uma ao mesmo tempo.
- */
 export async function listarNecessidades({ busca, categoria, nivel } = {}) {
   const lista = await requisitar('GET', '/necessidades', {
     params: { q: busca || undefined, categoria: categoria || undefined, limit: LIMITE },
@@ -120,7 +112,6 @@ export async function listarNecessidades({ busca, categoria, nivel } = {}) {
   return { total: itens.length, itens };
 }
 
-/** Opções dos filtros: urgências de GET /categorias e tipos de produto presentes no termômetro. */
 export async function obterFiltros() {
   const [categorias, todas] = await Promise.all([listarCategorias(), requisitar('GET', '/necessidades', { params: { limit: LIMITE } })]);
   return {
@@ -129,16 +120,11 @@ export async function obterFiltros() {
   };
 }
 
-/** Horários com vagas em um dia (GET /disponibilidade). */
 export async function consultarDisponibilidade(data) {
   const r = await requisitar('GET', '/disponibilidade', { params: { data } });
   return (r.horarios ?? []).map((h) => ({ horario: h.horario, capacidade: num(h.capacidade), vagas: num(h.vagas) }));
 }
 
-/**
- * POST /agendamentos. `chave` (Idempotency-Key) deve ser a MESMA numa nova tentativa após falha de rede.
- * Devolve { agendamento, token_acesso, repetido }.
- */
 export async function criarAgendamento({ chave, doador, data, horario, itens }) {
   const r = await requisitar('POST', '/agendamentos', {
     cabecalhos: { 'Idempotency-Key': chave },
@@ -189,7 +175,6 @@ async function listarDoacoesBrutas() {
   return requisitar('GET', '/doacoes', { ...admin, params: { limit: LIMITE } });
 }
 
-/** Soma do que já chegou por agendamento e produto, a partir dos recebimentos confirmados. */
 function somarRecebidos(doacoes) {
   const mapa = new Map();
   for (const d of doacoes) {
@@ -204,26 +189,28 @@ function somarRecebidos(doacoes) {
 
 const PERIODOS = {
   hoje: () => [hojeSP(), hojeSP()],
+  abertas: () => [null, null], // todas as datas: nada some até a equipe concluir ou cancelar
   semana: () => [hojeSP(), diaSP(7)],
   passados: () => [diaSP(-30), hojeSP()],
 };
 
-/**
- * GET /admin/agendamentos aceita um dia e um status por vez. Para "próximos 7 dias" e para
- * vários status, a lista (até 100) é filtrada aqui. "Já chegou" vem de GET /doacoes.
- */
-export async function listarAgendamentosAdmin({ periodo = 'hoje', incluirEncerrados = false } = {}) {
+export async function listarAgendamentosAdmin({ periodo = 'hoje', incluirEncerrados = false, busca = '' } = {}) {
+  const q = busca.trim();
   const [de, ate] = PERIODOS[periodo]();
-  const [lista, doacoes] = await Promise.all([
-    requisitar('GET', '/admin/agendamentos', { ...admin, params: { limit: LIMITE, data: periodo === 'hoje' ? de : undefined } }),
-    listarDoacoesBrutas(),
-  ]);
-  const recebidos = somarRecebidos(doacoes);
-  const status = incluirEncerrados ? ['Pendente', 'Confirmado', 'Concluído', 'Cancelado'] : ['Pendente', 'Confirmado'];
+  const semRecorte = Boolean(q) || periodo === 'abertas';
+  const lista = await requisitar('GET', '/admin/agendamentos', {
+    ...admin,
+    params: {
+      limit: LIMITE,
+      q: q || undefined,
+      data: !q && periodo === 'hoje' ? de : undefined,
+      status: incluirEncerrados && !(periodo === 'abertas' && !q) ? undefined : 'Pendente,Confirmado',
+    },
+  });
+  const semTotais = lista.some((a) => (a.itens ?? []).some((i) => i.quantidade_recebida === undefined));
+  const recebidos = semTotais ? somarRecebidos(await listarDoacoesBrutas()) : new Map();
   const agendamentos = lista
-    .filter((a) => status.includes(a.status_agendamento))
-    .filter((a) => { const dia = a.data_hora_agendada.slice(0, 10); return dia >= de && dia <= ate; })
-    .sort((a, b) => a.data_hora_agendada.localeCompare(b.data_hora_agendada))
+    .filter((a) => { const dia = a.data_hora_agendada.slice(0, 10); return semRecorte || (dia >= de && dia <= ate); })
     .map((a) => agendamentoInterno(a, recebidos));
   return { total: agendamentos.length, agendamentos };
 }
@@ -235,10 +222,20 @@ export const remarcarAgendamentoAdmin = (id, data, horario) =>
 export const concluirAgendamento = (id, motivo) =>
   requisitar('PATCH', `/admin/agendamentos/${id}/concluir`, { ...admin, corpo: motivo ? { motivo_pendencias: motivo } : {} });
 
-/**
- * POST /doacoes. `chave` é UUID e deve ser a MESMA numa nova tentativa após falha de rede.
- * Cada item informa id_necessidade explicitamente (string para somar à meta, null para não somar).
- */
+export async function receberEConcluir(id, { chave, itens = null, motivo = null }) {
+  const corpo = {};
+  if (itens) corpo.itens = itens.map((i) => ({ id_item: Number(i.id_item), quantidade_recebida: i.quantidade }));
+  if (motivo) corpo.motivo_pendencias = motivo;
+  const r = await requisitar('POST', `/admin/agendamentos/${id}/receber-e-concluir`, {
+    ...admin, cabecalhos: { 'Idempotency-Key': chave }, corpo,
+  });
+  return {
+    agendamento: agendamentoInterno(r.agendamento),
+    doacao: r.doacao ? recebimentoInterno(r.doacao) : null,
+    repetido: Boolean(r.repetido),
+  };
+}
+
 export async function registrarRecebimento({ chave, id_agendamento, ocorrido_em, itens }) {
   const { dados } = await requisitarCompleto('POST', '/doacoes', {
     ...admin,
@@ -263,11 +260,11 @@ export async function listarRecebimentos() {
 export const estornarRecebimento = (id, motivo) =>
   requisitar('PATCH', `/doacoes/${id}/estornar`, { ...admin, corpo: { motivo } });
 
-/** O painel inicial não tem rota própria na API: os números são montados a partir de três consultas. */
 export async function obterResumo() {
-  const [hoje, semana, termometro, doacoes] = await Promise.all([
+  const [hoje, semana, abertas, termometro, doacoes] = await Promise.all([
     listarAgendamentosAdmin({ periodo: 'hoje' }),
     listarAgendamentosAdmin({ periodo: 'semana' }),
+    listarAgendamentosAdmin({ periodo: 'abertas' }),
     listarNecessidades(),
     listarDoacoesBrutas(),
   ]);
@@ -276,15 +273,16 @@ export async function obterResumo() {
   return {
     agendamentos_hoje: hoje.total,
     agendamentos_proximos_7_dias: semana.total,
+    agendamentos_abertos: abertas.total,
+    agendamentos_atrasados: abertas.agendamentos.filter((a) => (diasDeAtraso(a.data_hora_agendada) ?? 0) >= 1).length,
     necessidades_abertas: termometro.total,
     necessidades_criticas_abaixo_30: termometro.itens.filter((n) => n.urgencia.nivel === 1 && n.percentual_atendimento < 30).length,
     recebimentos_mes: { mes, entregas: doacoes.filter((d) => d.status === 'Confirmado' && mesDe(d.ocorrido_em) === mes).length },
   };
 }
 
-// ================================================================ ADMIN: necessidades (metas)
+// ================================================================ ADMIN: necessidades
 
-/** Histórico de metas (todas as situações). Totais chegam como string e viram número aqui. */
 export async function listarNecessidadesAdmin(status = 'Aberta') {
   const [lista, categorias, catalogo] = await Promise.all([
     requisitar('GET', '/admin/necessidades/historico', { ...admin, params: { limit: LIMITE } }),
@@ -327,20 +325,17 @@ export async function abrirNecessidade({ id_item, nivel, quantidade_meta }) {
   });
 }
 
-/** A API exige a prioridade na renovação: a tela envia a escolhida ou a atual. */
 export async function renovarNecessidade(id, { quantidade_meta, nivel }) {
   return requisitar('POST', `/admin/necessidades/${id}/renovar`, {
     ...admin, corpo: { id_categoria: await idCategoriaDoNivel(nivel), quantidade_meta },
   });
 }
 
-/** status 'Encerrada' usa /encerrar; 'Cancelada' usa /cancelar. */
 export const encerrarNecessidade = (id, status) =>
   requisitar('PATCH', `/admin/necessidades/${id}/${status === 'Cancelada' ? 'cancelar' : 'encerrar'}`, { ...admin, corpo: {} });
 
 // ================================================================ ADMIN: catálogo de produtos
 
-/** Catálogo com urgência sugerida e, para cada produto, a meta aberta (se houver). */
 export async function listarItens(ativo = 'todos') {
   const [catalogo, categorias, abertas] = await Promise.all([
     requisitar('GET', '/admin/itens', { ...admin, params: { limit: LIMITE } }),
@@ -364,10 +359,6 @@ export async function listarItens(ativo = 'todos') {
   return { total: itens.length, itens };
 }
 
-/**
- * POST /itens e, se pedido, POST /admin/necessidades. São duas chamadas: se a segunda falhar,
- * o produto fica cadastrado sem meta e a mensagem avisa para abrir a necessidade depois.
- */
 export async function criarItem({ nome_item, unidade_medida, categoria_suprimento, nivel, quantidade_meta }) {
   const id_categoria = await idCategoriaDoNivel(nivel);
   const produto = await requisitar('POST', '/itens', {
@@ -384,14 +375,12 @@ export async function criarItem({ nome_item, unidade_medida, categoria_supriment
   return produto;
 }
 
-/** PUT exige o produto completo; a unidade é reenviada sem mudança. */
 export async function atualizarItem(id, { nome_item, unidade_medida, categoria_suprimento, nivel }) {
   return requisitar('PUT', `/itens/${id}`, {
     ...admin, corpo: { nome_item, unidade_medida, categoria_suprimento, id_categoria: await idCategoriaDoNivel(nivel) },
   });
 }
 
-/** DELETE /itens/{id} desativa (não apaga). A API atual não tem rota para reativar. */
 export const desativarItem = (id) => requisitar('DELETE', `/itens/${id}`, admin);
 
 // ================================================================ ADMIN: relatório

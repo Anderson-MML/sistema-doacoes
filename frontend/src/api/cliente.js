@@ -1,8 +1,7 @@
-// Cliente HTTP único. Implementa as convenções da seção 1 do contrato da API.
 export const URL_API = (import.meta.env.VITE_API_URL || 'http://127.0.0.1:3000').replace(/\/$/, '');
 export const USAR_MOCK = import.meta.env.VITE_USAR_MOCK === 'true';
 
-// O Render gratuito pode levar até 60 s para acordar (contrato, seção 1).
+// Para considerar o tempo de resposta do servidor, o tempo de espera é aumentado.
 const TIMEOUT_MS = 70000;
 const CHAVE_TOKEN = 'lar-ternura:token';
 
@@ -12,15 +11,13 @@ export class ErroApi extends Error {
     this.status = status;
     this.codigo = codigo;
     this.detalhes = detalhes ?? [];
-    this.requestId = requestId; // request_id da API: informe ao Anderson ao relatar um erro
+    this.requestId = requestId;
   }
 
-  /** true quando a requisição pode nem ter chegado ao servidor: repetir com a MESMA Idempotency-Key. */
   get falhaDeRede() {
     return this.status === 0;
   }
 
-  /** Detalhes de validação no formato { 'doador.email': 'mensagem' }. */
   get errosPorCampo() {
     return Object.fromEntries(this.detalhes.map((d) => [d.campo, d.mensagem]));
   }
@@ -39,7 +36,6 @@ export const sessao = {
 };
 
 let aoPerderSessao = () => {};
-/** O AuthContext registra aqui o que fazer quando uma rota protegida devolve 401. */
 export function registrarAoPerderSessao(fn) {
   aoPerderSessao = fn;
 }
@@ -127,7 +123,6 @@ export async function requisitarCompleto(metodo, caminho, {
   throw erro;
 }
 
-/** Igual a requisitarCompleto, mas devolve só o corpo. */
 export async function requisitar(metodo, caminho, opcoes) {
   return (await requisitarCompleto(metodo, caminho, opcoes)).dados;
 }

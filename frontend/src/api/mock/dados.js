@@ -1,8 +1,3 @@
-// Reproduz o cenário de 05_DADOS_FICTICIOS.sql (documentação do banco, seção 9),
-// com datas relativas ao mês atual em São Paulo. Dois acréscimos exclusivos do modo simulado:
-// uma conta de Administrador (o 05 não cria nenhuma), um agendamento para HOJE e o vínculo
-// promessa/meta que a API guarda em api_apoio,
-// para a tela "Doações de hoje" ter conteúdo.
 import { partesSP } from '../../utils/formatar.js';
 
 const HORA_UTC_14H_SP = 17; // 14:00 em São Paulo = 17:00 UTC
@@ -35,7 +30,7 @@ export function criarDadosIniciais() {
     { id_categoria: 3, nome_categoria: 'Baixa', cor_indicador: '#10B981', nivel_ordem: 3 },
   ];
 
-  // Mesma ordem do 05 (ORDER BY chave): arroz, cobertor, fralda, leite, sabao, sabonete.
+  // Mesma ordem do 05 (ORDER BY chave)
   const itens = [
     { id_item: 1, nome_item: '[DEMO] Arroz tipo 1 - pacote 5 kg', unidade_medida: 'pacotes', categoria_suprimento: 'Alimentos', id_categoria: 2, ativo: true },
     { id_item: 2, nome_item: '[DEMO] Cobertor solteiro - item inativo', unidade_medida: 'unidades', categoria_suprimento: 'Vestuário', id_categoria: 3, ativo: false },
