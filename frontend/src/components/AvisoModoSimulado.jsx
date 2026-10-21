@@ -1,6 +1,6 @@
 import { USAR_MOCK } from '../api/cliente.js';
 
-/** Faixa visível só com VITE_USAR_MOCK=true, para ninguém confundir a demonstração com dados reais. */
+/** Faixa visível só com VITE_USAR_MOCK=true */
 export function AvisoModoSimulado() {
   if (!USAR_MOCK) return null;
 

@@ -178,7 +178,6 @@ function FormProduto({ produto = null, categorias, aoConcluir }) {
   );
 }
 
-/** DELETE /itens/{id}: tira o produto da página de doações sem apagar o histórico. */
 function DesativarProduto({ produto, aoConcluir }) {
   const [confirmando, setConfirmando] = useState(false);
   const envio = useEnvio();

@@ -6,13 +6,19 @@ import { Botao } from '../ui/Botao.jsx';
 import { Alerta } from '../ui/Alerta.jsx';
 import { Campo } from '../ui/Campo.jsx';
 import { SeletorQuantidade } from '../ui/SeletorQuantidade.jsx';
-import { agoraDatetimeLocalSP, datetimeLocalParaIso, formatarNumero, DESLOCAMENTO_SP, partesSP } from '../../utils/formatar.js';
+import { formatarNumero, DESLOCAMENTO_SP, hojeSP, partesSP } from '../../utils/formatar.js';
 import { gerarUuid, quantidadeValida } from '../../utils/validar.js';
 
 function agoraComFuso() {
   const p = partesSP();
   return `${p.ano}-${p.mes}-${p.dia}T${p.hora}:${p.minuto}:${p.segundo}${DESLOCAMENTO_SP}`;
 }
+
+/**
+ * A tela pede só o dia; a API exige data e hora com fuso e recusa horário no futuro.
+ * Hoje: usa a hora atual. Dia anterior: meio-dia, só para a entrega cair no dia certo do relatório.
+ */
+const instanteDoDia = (dia) => (dia === hojeSP() ? agoraComFuso() : `${dia}T12:00:00${DESLOCAMENTO_SP}`);
 
 /**
  * Registra uma doação que chegou (POST /doacoes). Com `agendamento`, vem preenchida com o
@@ -36,8 +42,7 @@ export function FormRecebimento({ agendamento = null, aoConcluir, aoCancelar }) 
       quantidade: Math.max(i.quantidade_prometida - i.quantidade_recebida, 1),
       chegou: true,
     })));
-  const [quando, setQuando] = useState('agora');
-  const [dataHora, setDataHora] = useState(agoraDatetimeLocalSP);
+  const [dia, setDia] = useState(hojeSP);
   const [erroLocal, setErroLocal] = useState('');
   const [resultado, setResultado] = useState(null);
   const envio = useEnvio();
@@ -48,14 +53,13 @@ export function FormRecebimento({ agendamento = null, aoConcluir, aoCancelar }) 
     setErroLocal('');
     if (!incluidas.length) return setErroLocal('Marque pelo menos um produto que chegou.');
     if (incluidas.some((l) => !quantidadeValida(l.quantidade))) return setErroLocal('Confira as quantidades: use números inteiros de 1 a 9999.');
-    if (quando === 'outro' && (!dataHora || new Date(datetimeLocalParaIso(dataHora)) > new Date())) {
-      return setErroLocal('A data da entrega não pode ser no futuro.');
-    }
+    if (!dia) return setErroLocal('Informe a data da entrega.');
+    if (dia > hojeSP()) return setErroLocal('A data da entrega não pode ser no futuro.');
     try {
       const r = await envio.enviar(() => registrarRecebimento({
         chave: chave.current,
         id_agendamento: agendamento?.id_agendamento ?? null,
-        ocorrido_em: quando === 'agora' ? agoraComFuso() : datetimeLocalParaIso(dataHora),
+        ocorrido_em: instanteDoDia(dia),
         itens: incluidas.map((l) => ({ id_item: l.id_item, id_necessidade: l.somarMeta ? l.id_necessidade : null, quantidade: l.quantidade })),
       }));
       setResultado(r);
@@ -145,22 +149,9 @@ export function FormRecebimento({ agendamento = null, aoConcluir, aoCancelar }) 
         )}
       </fieldset>
 
-      <fieldset className="flex flex-col gap-2">
-        <legend className="mb-1 text-lg font-bold">Quando chegou</legend>
-        <label className="flex min-h-11 cursor-pointer items-center gap-3">
-          <input type="radio" name="quando" className="size-6 accent-lar" checked={quando === 'agora'} onChange={() => setQuando('agora')} />
-          Agora
-        </label>
-        <label className="flex min-h-11 cursor-pointer items-center gap-3">
-          <input type="radio" name="quando" className="size-6 accent-lar" checked={quando === 'outro'} onChange={() => setQuando('outro')} />
-          Em outro momento
-        </label>
-        {quando === 'outro' && (
-          <Campo rotulo="Data e hora da entrega" dica="Não pode ser no futuro.">
-            <input type="datetime-local" value={dataHora} max={agoraDatetimeLocalSP()} onChange={(e) => setDataHora(e.target.value)} />
-          </Campo>
-        )}
-      </fieldset>
+      <Campo id="data-entrega" rotulo="Data da entrega" obrigatorio dica="Hoje ou um dia anterior." className="sm:max-w-xs">
+        <input type="date" value={dia} max={hojeSP()} onChange={(e) => setDia(e.target.value)} />
+      </Campo>
 
       {(erroLocal || envio.erro) && (
         <Alerta tipo="erro">

@@ -8,7 +8,7 @@ const VARIANTES = {
   discreto: 'bg-transparent text-lar underline underline-offset-4 hover:text-lar-escuro border-2 border-transparent',
 };
 
-// min-h-11 = 44px: área mínima de toque (WCAG 2.5.5 / wireframe do Anderson).
+// min-h-11 = 44px: área mínima de toque (WCAG 2.5.5).
 const BASE = 'inline-flex items-center justify-center gap-2 min-h-11 px-5 py-2 rounded-lg font-bold text-base '
   + 'transition-colors disabled:opacity-60 disabled:cursor-not-allowed';
 

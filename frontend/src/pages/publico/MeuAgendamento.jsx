@@ -36,7 +36,7 @@ export default function MeuAgendamento() {
       <div className="mx-auto max-w-3xl px-4 py-10">
         <h1 className="text-3xl font-bold">Link incompleto</h1>
         <p className="mt-3 text-lg">Abra o link completo que apareceu quando você agendou. Ele termina com um código depois do símbolo #.</p>
-        <BotaoLink to="/" className="mt-6">Ir para a página de doações</BotaoLink>
+        <BotaoLink to="/doar" className="mt-6">Ir para a página de doações</BotaoLink>
       </div>
     );
   }
@@ -82,7 +82,10 @@ export default function MeuAgendamento() {
       <p className="mt-4 text-lg">{SITUACAO[a.status_agendamento]}</p>
 
       <section className="mt-6 rounded-xl border border-linha p-6">
-        <h2 className="text-xl font-bold">Quando</h2>
+        <h2 className="text-xl font-bold">Código da entrega</h2>
+        <p className="mt-1 text-3xl font-bold">#{a.id_agendamento}</p>
+        <p className="mt-1 text-tinta-suave">Diga este número na portaria.</p>
+        <h2 className="mt-6 text-xl font-bold">Quando</h2>
         <p className="mt-1 text-2xl font-bold first-letter:uppercase">
           {formatarData(a.data_hora_agendada)}, às {formatarHora(a.data_hora_agendada)}
         </p>

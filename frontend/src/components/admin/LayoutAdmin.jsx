@@ -9,6 +9,7 @@ const LINKS = [
   { para: '/admin/registrar', texto: 'Registrar doação' },
   { para: '/admin/necessidades', texto: 'Necessidades' },
   { para: '/admin/produtos', texto: 'Produtos' },
+  { para: '/admin/relatorio', texto: 'Relatório do mês' },
 ];
 
 const estiloLink = ({ isActive }) => `flex min-h-11 items-center rounded-lg px-3 font-bold ${
@@ -22,9 +23,12 @@ export function LayoutAdmin() {
     <div className="flex min-h-screen flex-col bg-nevoa">
       <a href="#conteudo" className="pular-link">Pular para o conteúdo</a>
       <AvisoModoSimulado />
-      <header className="border-b border-linha bg-papel">
+      <header className="border-b-4 border-marca-laranja bg-papel">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-3 px-4 py-3">
-          <p className="text-lg font-bold">Painel do Lar Ternura</p>
+          <p className="flex items-center gap-3 font-titulo text-lg font-extrabold">
+            <img src="/logo-lar-ternura-192.png" alt="" width="44" height="44" className="size-11" />
+            Painel do Lar Ternura
+          </p>
           <div className="flex flex-wrap items-center gap-2">
             <span className="text-tinta-suave">{primeiroNome(usuario.nome) || usuario.email}</span>
             <button type="button" onClick={async () => { await sair(); navegar('/admin/entrar'); }}

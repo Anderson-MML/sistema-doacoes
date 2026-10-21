@@ -131,6 +131,77 @@ describe('POST /doacoes', () => {
   });
 });
 
+// Contrato proposto ao backend no PDF "Ajustes no backend: itens 1, 3 e 9".
+describe('GET /admin/agendamentos: ordem e busca (itens 1 e 3)', () => {
+  const ids = (r) => r.corpo.map((a) => a.id_agendamento);
+  const listar = async (params) => req('GET', '/admin/agendamentos', { token: await token(), params });
+
+  it('vem do mais recente para o mais antigo e aceita vários status', async () => {
+    expect(ids(await listar({}))).toEqual([4, 3, 5, 1, 2]);
+    expect(ids(await listar({ status: 'Pendente,Confirmado' }))).toEqual([3, 5, 1]);
+    expect((await listar({ status: 'Xyz' })).status).toBe(422);
+  });
+
+  it('busca por código, trecho de telefone, nome e e-mail', async () => {
+    expect(ids(await listar({ q: '#5' }))).toEqual([5]);
+    expect(ids(await listar({ q: '5' }))).toEqual([5]);
+    expect(ids(await listar({ q: '00000-0004' }))).toEqual([5]); // trecho do telefone formatado
+    expect(ids(await listar({ q: '0004' }))).toEqual([4, 5]); // só dígitos: código 4 e telefone de Ana
+    expect(ids(await listar({ q: 'MARIA' }))).toEqual([4, 1]);
+    expect(ids(await listar({ q: 'maria', status: 'Pendente,Confirmado' }))).toEqual([1]);
+    expect(ids(await listar({ q: 'joao.demo' }))).toEqual([3]);
+    expect(ids(await listar({ q: 'ninguém' }))).toEqual([]);
+  });
+
+  it('cada item traz o total já recebido', async () => {
+    const maria = (await listar({ q: '#1' })).corpo[0];
+    expect(maria.itens.find((i) => i.id_item === 4).quantidade_recebida).toBe(22);
+  });
+});
+
+describe('POST /admin/agendamentos/{id}/receber-e-concluir (item 9)', () => {
+  const concluir = async (id, corpo = {}, chave = uuid()) => req('POST', `/admin/agendamentos/${id}/receber-e-concluir`, {
+    token: await token(), corpo, cabecalhos: { 'Idempotency-Key': chave },
+  });
+  const arrecadado = async (q) => (await req('GET', '/necessidades', { params: { q } })).corpo[0].quantidade_arrecadada;
+
+  it('corpo vazio: chegou tudo, soma às metas e conclui; clique duplo não duplica', async () => {
+    const chave = uuid();
+    const r = await concluir(5, {}, chave);
+    expect(r.status).toBe(201);
+    expect(r.corpo.agendamento.status_agendamento).toBe('Concluído');
+    expect(r.corpo.agendamento.itens.every((i) => i.status_item === 'Entregue')).toBe(true);
+    expect(await arrecadado('leite')).toBe(27);
+    const rep = await concluir(5, {}, chave);
+    expect(rep.status).toBe(200);
+    expect(rep.corpo.repetido).toBe(true);
+    expect(await arrecadado('leite')).toBe(27);
+    expect((await concluir(5)).corpo.repetido).toBe(true); // outra chave, já concluído
+  });
+
+  it('doação atrasada soma à meta aberta atual quando a original foi renovada', async () => {
+    const t = await token();
+    await req('POST', '/admin/necessidades/4/renovar', { token: t, corpo: { id_categoria: 1, quantidade_meta: 80 } });
+    const r = await concluir(1); // Maria: prometeu 40 leites no mês passado, chegaram 22
+    expect(r.status).toBe(201);
+    expect(await arrecadado('leite')).toBe(18);
+  });
+
+  it('chegou só uma parte: exige motivo e marca o resto como não entregue', async () => {
+    const parcial = { itens: [{ id_item: 6, quantidade_recebida: 10 }] };
+    expect((await concluir(3, parcial)).status).toBe(409);
+    const r = await concluir(3, { ...parcial, motivo_pendencias: 'Trouxe só 10' });
+    expect(r.corpo.agendamento.status_agendamento).toBe('Concluído');
+    expect(r.corpo.agendamento.itens[0].status_item).toBe('Cancelado');
+    expect(await arrecadado('sabonete')).toBe(10);
+  });
+
+  it('cancelado responde 409 e a chave é obrigatória', async () => {
+    expect((await concluir(4)).status).toBe(409);
+    expect((await req('POST', '/admin/agendamentos/5/receber-e-concluir', { token: await token(), corpo: {} })).status).toBe(422);
+  });
+});
+
 describe('metas e catálogo', () => {
   it('renovar começa do zero e mantém a antiga no histórico (totais como string)', async () => {
     const t = await token();

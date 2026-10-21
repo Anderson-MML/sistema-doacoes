@@ -1,4 +1,3 @@
-/** Link "Adicionar ao Google Agenda" para o agendamento confirmado. */
 export function linkGoogleAgenda({ titulo, inicioIso, duracaoMin = 30, detalhes = '', local = '' }) {
   const inicio = new Date(inicioIso);
   const fim = new Date(inicio.getTime() + duracaoMin * 60000);

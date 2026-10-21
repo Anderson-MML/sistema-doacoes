@@ -1,6 +1,5 @@
 import { estiloUrgencia } from '../../utils/urgencia.js';
 
-/** Barra do termômetro. O texto com os números fica fora dela, sempre visível. */
 export function BarraProgresso({ valor, nivel, rotulo, alta = false }) {
   const pct = Math.max(0, Math.min(100, valor));
   return (

@@ -5,14 +5,14 @@ import { FormRecebimento } from '../../components/admin/FormRecebimento.jsx';
 
 export default function RegistrarDoacao() {
   useTitulo('Registrar doação');
-  // Trocar a key cria um formulário novo, com nova chave de operação.
+  
   const [rodada, setRodada] = useState(0);
   const [concluidas, setConcluidas] = useState(0);
 
   return (
     <div>
       <CabecalhoPagina titulo="Registrar doação"
-        descricao="Para doações que chegaram sem agendamento. Se a pessoa tinha agendado, use Doações agendadas e clique em Chegou." />
+        descricao="Para doações que chegaram sem agendamento. Se a pessoa tinha agendado, use Doações agendadas e clique em Concluído." />
       {concluidas > 0 && (
         <p role="status" className="mb-4 font-bold text-sucesso">
           {concluidas === 1 ? '1 doação registrada nesta sessão.' : `${concluidas} doações registradas nesta sessão.`}

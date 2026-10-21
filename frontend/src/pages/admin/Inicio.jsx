@@ -40,6 +40,10 @@ export default function Inicio() {
             detalhe={r.agendamentos_hoje
               ? `${plural(r.agendamentos_hoje, 'entrega agendada', 'entregas agendadas')} para hoje`
               : 'Nenhuma entrega agendada para hoje'} />
+          <Atalho para="/admin/agendamentos?periodo=abertas"
+            titulo="Doações em aberto"
+            detalhe={`${plural(r.agendamentos_abertos, 'em aberto', 'em aberto')}${r.agendamentos_atrasados
+              ? `, ${plural(r.agendamentos_atrasados, 'atrasada', 'atrasadas')}` : ''}`} />
           <Atalho para="/admin/registrar"
             titulo="Registrar doação que chegou"
             detalhe="Para doações sem agendamento" />

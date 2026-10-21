@@ -1,4 +1,3 @@
-// "Carrinho" do doador: os itens que ele escolheu levar. Sobrevive a recarregar a página.
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 const CHAVE = 'lar-ternura:minha-doacao:v2';
@@ -44,10 +43,6 @@ export function DoacaoProvider({ children }) {
     });
   }, []);
 
-  /**
-   * Mantém só itens cuja meta continua aberta, e atualiza o id_necessidade se a meta foi renovada.
-   * `metas` = Map(id_item -> id_necessidade atual).
-   */
   const sincronizar = useCallback((metas) => {
     setItens((atuais) => {
       const novos = atuais

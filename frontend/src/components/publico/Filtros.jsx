@@ -5,10 +5,6 @@ const chip = 'flex min-h-11 cursor-pointer items-center gap-2 rounded-full borde
   + 'has-[:checked]:border-lar has-[:checked]:bg-lar has-[:checked]:text-white has-[:focus-visible]:outline '
   + 'has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-lar';
 
-/**
- * Barra lateral do wireframe. Usa checkbox e radio nativos (estilizados como "chips")
- * para funcionar com teclado e leitor de tela sem ARIA extra.
- */
 export function Filtros({ opcoes, valores, aoMudar }) {
   const alternarNivel = (nivel) => {
     const niveis = valores.niveis.includes(nivel)

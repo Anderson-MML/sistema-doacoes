@@ -1,6 +1,5 @@
 import { useCallback, useState } from 'react';
 
-/** Estado padrão de um envio de formulário: enviando, erro geral e erros por campo. */
 export function useEnvio() {
   const [enviando, setEnviando] = useState(false);
   const [erro, setErro] = useState(null);

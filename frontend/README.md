@@ -1,6 +1,6 @@
 # Frontend: Sistema de Doações Lar Ternura
 
-React 18 + Tailwind CSS 4 + Vite 5. Consome a **API 2.0.0 do Anderson** (`openapi.json`, tarefa 8): área do doador e painel da ONG.
+React 18 + Tailwind CSS 4 + Vite 5. Consome a **API 2.0.0** (`openapi.json`): área do doador e painel da ONG.
 
 ## Rodar localmente
 
@@ -21,6 +21,16 @@ Com `VITE_USAR_MOCK=true` no `.env.local`, o front usa um servidor simulado que 
 "Restaurar dados de exemplo".
 
 Conta de demonstração: `admin@demo.org`, senha `demo12345`.
+
+O simulador já segue o contrato proposto no PDF "Ajustes no backend: itens 1, 3 e 9", que ainda
+precisa ser implementado na API real:
+
+- `GET /admin/agendamentos` do mais recente para o mais antigo, com `q` (código, nome, telefone
+  ou e-mail) e `status` com vários valores (`Pendente,Confirmado`);
+- `quantidade_recebida` em cada item do agendamento;
+- `POST /admin/agendamentos/{id}/receber-e-concluir`, que registra o que chegou e conclui de uma vez.
+
+Enquanto a API não tiver essas mudanças, a tela **Doações agendadas** só funciona no modo simulado.
 
 **Para usar a API real:**
 
@@ -53,7 +63,7 @@ src/
 ├── pages/publico/        # Termômetro, Agendar, Confirmação, Meu agendamento (link privado)
 ├── pages/admin/          # Entrar, Início, Agendamentos, Registrar, Necessidades, Produtos
 ├── utils/                # datas em America/Sao_Paulo, validações, urgência, Google Agenda, link privado
-└── config.js             # PROVISÓRIO: endereço de entrega (a confirmar com a ONG)
+└── config.js             # Endereço de entrega e contatos da ONG
 ```
 
 ## Acessibilidade (WCAG 2.1 AA)
@@ -77,20 +87,3 @@ src/
 - **Link privado do doador:** `/meu-agendamento/{id}#{token_acesso}`. O código fica depois do `#`, então não
   é enviado a servidores nem aparece em logs. Também é guardado no aparelho em que o agendamento foi feito.
 - **Datas:** agendamentos chegam em hora local de São Paulo sem fuso; `paraInstante()` em `utils/formatar.js` trata.
-
-## Pendências
-
-**Pedidos ao backend** (a API 2.0.0 ainda não oferece):
-
-1. Cadastro de pessoas com acesso pela interface e troca da própria senha (pedido da líder do grupo).
-2. Reativar produto desativado.
-3. `quantidade_recebida` por item em `GET /admin/agendamentos` (hoje o front soma a partir de `GET /doacoes`,
-   limitado aos 100 recebimentos mais recentes).
-4. Filtro por período (`de`/`ate`) e por vários status em `GET /admin/agendamentos`.
-5. Documentar no `openapi.json` os campos de `usuario` (login e `/auth/me`) e de `doador` (agendamento admin).
-6. Esclarecer se o filtro `prioridade` de `GET /necessidades` recebe `id_categoria` ou `nivel_ordem`
-   (o front filtra a prioridade localmente e não depende disso).
-
-**Dependem da ONG:** endereço de entrega em `src/config.js`; horários e capacidade são configurados no backend.
-
-**Pós-MVP:** telas de histórico de recebimentos, estorno e relatório mensal (as funções já existem em `src/api/index.js`).

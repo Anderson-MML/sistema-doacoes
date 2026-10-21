@@ -5,7 +5,6 @@ const TIPOS = {
   atencao: 'bg-media-claro border-media',
 };
 
-/** Erros usam role="alert" (anúncio imediato); os demais, role="status". */
 export function Alerta({ tipo = 'info', titulo, children, acao, className = '' }) {
   return (
     <div

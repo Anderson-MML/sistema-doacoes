@@ -2,7 +2,6 @@ import { useDoacao } from '../../contexts/DoacaoContext.jsx';
 import { BotaoLink } from '../ui/Botao.jsx';
 import { formatarNumero } from '../../utils/formatar.js';
 
-/** "Painel de resumo" do wireframe: o que a pessoa já escolheu, com atalho para agendar. */
 export function PainelDoacao() {
   const { itens, remover } = useDoacao();
 
@@ -37,7 +36,6 @@ export function PainelDoacao() {
   );
 }
 
-/** Versão para celular: barra fixa no rodapé com contagem e atalho. */
 export function BarraDoacaoMovel() {
   const { total } = useDoacao();
   if (total === 0) return null;

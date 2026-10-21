@@ -1,6 +1,5 @@
 import { ESTILO_CAMPO_BASE } from './Campo.jsx';
 
-/** Campo numérico com botões − e + de 44px. Só aceita inteiros. */
 export function SeletorQuantidade({ id, valor, aoMudar, min = 1, max = 9999, rotulo, unidade, erro }) {
   const definir = (n) => aoMudar(Math.max(min, Math.min(max, n)));
   const botao = 'min-h-11 min-w-11 rounded-lg border-2 border-linha-forte bg-papel text-xl font-bold text-tinta hover:bg-nevoa disabled:opacity-40';
