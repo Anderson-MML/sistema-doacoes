@@ -18,6 +18,7 @@ function createApp({ store,config,clock=()=>new Date(),logger=console,calendario
     next();
   });
   app.use(express.json({ limit:'32kb',strict:true }));
+  require('./documentation').installDocumentation(app);
   const requireAdmin=wrap(async(req,res,next)=> {
     const raw=SEC.bearer(req);
     if (!raw) fail(401,'NAO_AUTORIZADO','Autenticação necessária.');
@@ -83,15 +84,15 @@ function createApp({ store,config,clock=()=>new Date(),logger=console,calendario
   app.patch('/agendamentos/:id/remarcar',wrap(async(req,res)=> {
     V.object(req.body,['data','horario']);res.json(await store.changeBooking(V.id(req.params.id),bookingHash(req),V.slot(req.body,config,clock())));
   }));
-  app.get('/admin/agendamentos',requireAdmin,wrap(async(req,res)=> {
-    const data=req.query.data===undefined ? null : V.date(req.query.data);const status=req.query.status;
-    if (status!==undefined && !['Pendente','Confirmado','Concluído','Cancelado'].includes(status)) fail(422,'VALIDACAO','Status inválido.');
-    res.json(await store.bookings({ ...V.pagination(req.query),data,status }));
-  }));
+  app.get('/admin/agendamentos',requireAdmin,wrap(async(req,res)=>res.json(await store.bookings(V.bookingFilters(req.query)))));
   app.get('/admin/agendamentos/:id',requireAdmin,wrap(async(req,res)=>res.json(await store.booking(V.id(req.params.id),null,store.db,true))));
   app.patch('/admin/agendamentos/:id/cancelar',requireAdmin,wrap(async(req,res)=>res.json(await store.changeBooking(V.id(req.params.id),null,null,true))));
   app.patch('/admin/agendamentos/:id/remarcar',requireAdmin,wrap(async(req,res)=> {
     V.object(req.body,['data','horario']);res.json(await store.changeBooking(V.id(req.params.id),null,V.slot(req.body,config,clock()),true));
+  }));
+  app.post('/admin/agendamentos/:id/receber-e-concluir',requireAdmin,wrap(async(req,res)=> {
+    const result=await store.receiveAndConclude(V.id(req.params.id),V.receiveCompletion(req.body),V.uuid(req.get('Idempotency-Key')),req.user.id_usuario,clock());
+    res.json(result);
   }));
   app.post('/doacoes',requireAdmin,wrap(async(req,res)=> {
     const result=await store.receive(V.receipt(req.body),V.uuid(req.get('Idempotency-Key')),req.user.id_usuario);

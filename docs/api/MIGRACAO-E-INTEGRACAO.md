@@ -44,7 +44,7 @@ O frontend deve consultar GET /itens e preservar id_necessidade como string na s
 
 - Produto e meta agora são criados separadamente. `POST/PUT /itens` recebe apenas dados do catálogo. `POST /admin/necessidades` abre uma meta; renovar encerra a antiga e cria outra em uma transação. Meta não é atualizada por PUT.
 - `quantidade_atual` e `quantidade_necessaria` são aliases JSON de arrecadado/meta para os cartões. Não são colunas do banco nem representam saldo de estoque físico. O histórico usa entregas efetivas confirmadas.
-- `POST /agendamentos` exige `id_necessidade` como string em cada item. Uma seleção de meta encerrada, renovada, cancelada, atendida ou produto inativo recebe 409. O retry de uma reserva já gravada continua sendo recuperado mesmo após fechamento da meta.
+- `POST /agendamentos` exige `id_necessidade` como string em cada item. Uma seleção de meta encerrada, renovada, cancelada ou produto inativo recebe 409. O retry de uma reserva já gravada continua sendo recuperado mesmo após fechamento da meta.
 - `POST /doacoes` exige UUID em `Idempotency-Key`, data efetiva com fuso e quantidades realmente recebidas. O corpo antigo apenas com `id_agendamento` foi descontinuado. Sem vínculo com meta, enviar `id_necessidade: null` explicitamente: conta no mês, mas não no termômetro.
 - Recebimentos parciais não concluem automaticamente o agendamento. `PATCH /admin/agendamentos/{id}/concluir` exige `motivo_pendencias` se faltarem quantidades. Itens completos ficam Entregue; incompletos ficam Cancelado, preservando os recebimentos parciais.
 - Estornar mantém o registro e recalcula a arrecadação do mês original. Estorno de agendamento concluído não o reabre; uma nova entrega exige novo planejamento administrativo.
@@ -71,3 +71,7 @@ Não marcar as tarefas como entregues em produção somente com base nestes test
 ## Correção de estrutura — 13/10/2026
 
 A migração e o `/ready` agora compartilham a validação estrutural das tabelas de apoio. Incompatibilidades interrompem a migração e retornam 503 no `/ready`. Ver `docs/api/CORRECAO-VALIDACAO-ESTRUTURA-13-10-2026.md` (a partir da raiz do repositório). Para regenerar a migração após mudar o contrato, executar `node scripts/build-migration.js` na pasta backend; esse comando não acessa o banco.
+
+## Atualização E1 — 23/10/2026
+
+A API 2.1 permite agendar meta atingida que permaneça aberta. A nova conclusão recebe e encerra em transação única, escolhendo a meta aberta atual. Nenhuma migração nova foi introduzida; a instalação 002 e seus privilégios permanecem os mesmos. Swagger, Postman e guia E1 estão na documentação. Publicação e regras de feriados/capacidade permanecem com a equipe.

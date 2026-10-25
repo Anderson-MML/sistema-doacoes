@@ -2,13 +2,13 @@
   "openapi": "3.0.3",
   "info": {
     "title": "Lar Ternura — API compatível com banco Vinicius",
-    "version": "2.0.0",
-    "description": "Complemento não destrutivo sobre SQL v1.0 de 11/10/2026. Total arrecadado não representa estoque físico. API ainda não publicada; somente servidor local está informado."
+    "version": "2.1.0",
+    "description": "API E1: busca administrativa, recebimento e conclusão atômicos, agendamentos permitidos após meta atingida. Sem controle de estoque físico. Consulta BrasilAPI permanece informativa."
   },
   "servers": [
     {
-      "url": "http://localhost:3000",
-      "description": "Desenvolvimento local — não é URL de produção"
+      "url": "/",
+      "description": "Mesma origem em que a API está sendo acessada; também funciona em desenvolvimento local."
     }
   ],
   "paths": {
@@ -317,7 +317,8 @@
               }
             }
           }
-        }
+        },
+        "description": "Consulta paginada de necessidades abertas de produtos ativos, incluindo metas já atingidas. Retorna quantidade_meta, quantidade_arrecadada e quantidade_faltante (mínimo zero), com unidade de cada produto. Use limit/offset até obter página vazia. Não soma unidades diferentes. Recebimentos confirmados entram no total; promessas não entram. Base para a tela de consulta e PDF do frontend. Histórico fechado em /admin/necessidades/historico."
       },
       "post": {
         "summary": "Cadastrar produto, sem criar meta",
@@ -447,7 +448,8 @@
               }
             }
           }
-        }
+        },
+        "description": "Consulta paginada de necessidades abertas de produtos ativos, incluindo metas já atingidas. Retorna quantidade_meta, quantidade_arrecadada e quantidade_faltante (mínimo zero), com unidade de cada produto. Use limit/offset até obter página vazia. Não soma unidades diferentes. Recebimentos confirmados entram no total; promessas não entram. Base para a tela de consulta e PDF do frontend. Histórico fechado em /admin/necessidades/historico."
       }
     },
     "/itens/{id}": {
@@ -1142,7 +1144,8 @@
               }
             }
           }
-        }
+        },
+        "description": "Permite agendar necessidades abertas de produtos ativos mesmo com meta atingida. Exige id_necessidade atual; metas encerradas/canceladas/renovadas e produtos inativos continuam sendo recusados. A promessa não altera a arrecadação confirmada."
       }
     },
     "/agendamentos/{id}": {
@@ -1454,14 +1457,38 @@
             "in": "query",
             "required": false,
             "schema": {
+              "type": "array",
+              "minItems": 1,
+              "maxItems": 4,
+              "items": {
+                "type": "string",
+                "enum": [
+                  "Pendente",
+                  "Confirmado",
+                  "Concluído",
+                  "Cancelado"
+                ]
+              }
+            },
+            "style": "form",
+            "explode": false,
+            "example": [
+              "Pendente",
+              "Confirmado"
+            ],
+            "description": "Um ou mais status separados por vírgula. Sem filtro quando omitido."
+          },
+          {
+            "name": "q",
+            "in": "query",
+            "required": false,
+            "schema": {
               "type": "string",
-              "enum": [
-                "Pendente",
-                "Confirmado",
-                "Concluído",
-                "Cancelado"
-              ]
-            }
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "description": "Código, nome, email ou telefone. Caracteres % e _ são literais.",
+            "example": "Maria"
           }
         ],
         "responses": {
@@ -1488,7 +1515,8 @@
               }
             }
           }
-        }
+        },
+        "description": "Retorna lista paginada, ordenada por data_hora_agendada DESC e id_agendamento DESC. Busca literal e sem diferença de caixa por nome/email; código com ou sem #; telefone por 4 ou mais dígitos, ignorando formatação. Não remove acentos. Código fora do intervalo inteiro não provoca erro. Contatos exigem sessão administrativa."
       }
     },
     "/admin/agendamentos/{id}": {
@@ -1867,6 +1895,141 @@
           },
           "422": {
             "description": "Ano inválido"
+          }
+        }
+      }
+    },
+    "/admin/agendamentos/{id}/receber-e-concluir": {
+      "post": {
+        "summary": "Registrar chegada e concluir agendamento numa transação",
+        "operationId": "post_admin_agendamentos_id_receber_e_concluir",
+        "tags": [
+          "ONG"
+        ],
+        "security": [
+          {
+            "SessaoONG": []
+          }
+        ],
+        "description": "Trava o agendamento e usa a meta aberta atual por produto; sem meta aberta, registra sem vínculo. Aceita atrasados. Idempotência compara administrador, agendamento e corpo, e não permite reutilizar a chave em POST /doacoes. Produto inativo com saldo a receber gera 409. Repetição de concluído não cria doação adicional. Datas de recebimento são atribuídas pelo servidor.",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 2147483647
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid"
+            },
+            "description": "UUID preservado em retries do mesmo corpo. Use nova chave para outra operação."
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReceberConcluirEntrada"
+              },
+              "examples": {
+                "integral": {
+                  "value": {}
+                },
+                "parcial": {
+                  "value": {
+                    "itens": [
+                      {
+                        "id_item": 1,
+                        "quantidade_recebida": 3
+                      }
+                    ],
+                    "motivo_pendencias": "Trouxe somente parte da promessa"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Recebimento e conclusão confirmados, ou resposta idempotente.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReceberConcluirResposta"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Sessão administrativa necessária.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Cargo sem permissão.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Agendamento inexistente.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Cancelado, produto inativo, chave reutilizada ou entrega parcial sem motivo. Toda a operação é desfeita.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Corpo/chave inválidos, item não pendente ou quantidade superior ao restante da promessa.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Banco indisponível.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Erro"
+                }
+              }
+            }
           }
         }
       }
@@ -2316,6 +2479,12 @@
                     "Entregue",
                     "Cancelado"
                   ]
+                },
+                "quantidade_recebida": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991,
+                  "description": "Soma de todos os recebimentos confirmados deste item/agendamento, sem limite de 100 registros e excluindo estornos. Não é quantidade prometida nem saldo físico."
                 }
               }
             }
@@ -2824,6 +2993,155 @@
             }
           }
         ]
+      },
+      "ReceberConcluirEntrada": {
+        "type": "object",
+        "additionalProperties": false,
+        "description": "{} recebe exatamente o que falta dos itens Agendado. Com itens explícitos, itens omitidos recebem zero. Nenhum item pode exceder a promessa restante; excedentes usam POST /doacoes. Entrega parcial exige motivo. Array vazio com motivo conclui sem criar recebimento vazio.",
+        "properties": {
+          "itens": {
+            "type": "array",
+            "maxItems": 100,
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "id_item",
+                "quantidade_recebida"
+              ],
+              "properties": {
+                "id_item": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 2147483647
+                },
+                "quantidade_recebida": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 2147483647
+                }
+              }
+            }
+          },
+          "motivo_pendencias": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500
+          }
+        }
+      },
+      "ReceberConcluirResposta": {
+        "type": "object",
+        "required": [
+          "agendamento",
+          "doacao",
+          "repetido"
+        ],
+        "properties": {
+          "agendamento": {
+            "$ref": "#/components/schemas/Agendamento"
+          },
+          "doacao": {
+            "type": "object",
+            "properties": {
+              "id_recebimento": {
+                "type": "string",
+                "pattern": "^[1-9][0-9]{0,18}$",
+                "description": "ID bigint decimal até 9223372036854775807. Nunca converter para Number."
+              },
+              "id_doacao": {
+                "type": "string",
+                "pattern": "^[1-9][0-9]{0,18}$",
+                "description": "Alias do ID de recebimento para preservar /doacoes."
+              },
+              "chave_operacao": {
+                "type": "string",
+                "format": "uuid"
+              },
+              "id_agendamento": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 2147483647,
+                "nullable": true
+              },
+              "id_doador": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 2147483647,
+                "nullable": true
+              },
+              "ocorrido_em": {
+                "type": "string",
+                "format": "date-time"
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "Rascunho",
+                  "Confirmado",
+                  "Estornado"
+                ]
+              },
+              "registrado_por": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 2147483647
+              },
+              "confirmado_por": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 2147483647,
+                "nullable": true
+              },
+              "estornado_por": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 2147483647,
+                "nullable": true
+              },
+              "motivo_estorno": {
+                "type": "string",
+                "nullable": true
+              },
+              "itens": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "id_item": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 2147483647
+                    },
+                    "id_necessidade": {
+                      "type": "string",
+                      "pattern": "^[1-9][0-9]{0,18}$",
+                      "description": "ID bigint decimal até 9223372036854775807. Nunca converter para Number.",
+                      "nullable": true
+                    },
+                    "quantidade_recebida": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 2147483647
+                    },
+                    "nome_item_registrado": {
+                      "type": "string"
+                    },
+                    "unidade_registrada": {
+                      "type": "string"
+                    }
+                  }
+                }
+              }
+            },
+            "nullable": true,
+            "description": "Recebimento criado nesta operação; null se não houve novas quantidades ou se já estava concluído por outra operação."
+          },
+          "repetido": {
+            "type": "boolean",
+            "description": "true em repetição da chave ou agendamento já concluído."
+          }
+        }
       }
     }
   }

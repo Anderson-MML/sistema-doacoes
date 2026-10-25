@@ -1,9 +1,13 @@
-# Validação da tarefa 8
+# Validação da API 2.1 — E1
 
-51 testes locais de API/banco aprovados, sem falhas. Um desses casos executa as 25 verificações originais do Vinicius; não somar 25 novamente ao total. Suíte executada no pacote da tarefa 8, sem depender da pasta frontend-react.
+Executada em 23/10/2026 na cópia local da develop 8cebf7dcd40321fb882e701fec9af6f670d426f7, com as alterações E1.
 
-Abrange migração repetível e sem reset, recusa de modelo misto, catálogo/metas, renovação e histórico, sessões, usuários inativos, vagas, idempotência, meta desatualizada, IDs bigint, recebimentos parciais/espontâneos, estorno, mês de São Paulo, conclusão e role limitada local. Cliente HTTP de referência valida o contrato de agendamento e recuperação após perda da resposta.
+95 testes declarados aprovados, sem falhas: 65 anteriores (31 de compatibilidade, 20 de estrutura, dez do cliente BrasilAPI, quatro HTTP de calendário), 27 novos funcionais E1 e três de documentação/contrato.
 
-Ambiente: banco PGlite descartável. Nome da conexão local adaptado em memória nos scripts de teste; regras e arquivos SQL originais preservados. Não comprova permissões ou concorrência entre conexões no Neon real. API ainda não publicada. Integração de API externa da tarefa 9 e frontend completo permanecem fora deste pacote.
+Os testes E1 cobrem busca, filtros/status, ordem/paginação, conclusão integral e parcial, rollback após falha na conclusão, meta renovada, ausência de meta, produto inativo, chaves idempotentes, preservação de autoria, role limitada e total recebido além de 100 registros. Também confirmam que meta atingida aceita promessa sem alterar arrecadação, enquanto metas fechadas e produtos inativos permanecem bloqueados.
 
-Atualização em 13/10/2026: 31 casos anteriores e 20 novos casos de estrutura incompatível. Os novos casos confirmam erro de migração, rollback e `/ready` 503; detalhes em CORRECAO-VALIDACAO-ESTRUTURA-13-10-2026.md.
+Swagger em /docs e /docs/, assets locais e contrato em /openapi.json foram testados por HTTP; a renderização foi conferida no navegador. A coleção Postman cobre as 36 operações do contrato e não contém credenciais preenchidas. O pacote foi instalado com lockfile congelado e dependências locais.
+
+Resultado integral: RESULTADO-TESTES-E1.txt. Banco PGlite descartável; nenhuma conexão de teste usa DATABASE_URL real. As 25 verificações SQL originais fazem parte de um dos testes anteriores, não são 25 testes adicionais. O comando explícito evita contar módulos de apoio como casos.
+
+Não comprova concorrência com conexões PostgreSQL independentes, produção, leitor de tela ou implantação. Não houve publicação no GitHub, migração no Neon, alteração no Render nem mudança do frontend final.
