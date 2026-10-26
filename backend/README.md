@@ -1,6 +1,6 @@
 # Tarefa 8 — API REST Lar Ternura
 
-API 2.0.0, compatibilizada com o banco do Vinicius e validada localmente. Este pacote contém somente o backend e sua documentação; não publica ou substitui o frontend da tarefa 13/14.
+API 2.1.0, compatibilizada com o banco do Vinicius e validada localmente. Este pacote contém somente o backend e sua documentação; não publica ou substitui o frontend da tarefa 13/14.
 
 Atualização da integração externa: esta branch acrescenta calendário informativo da BrasilAPI e uma página de integração em `/integracao/agendamento/`. Ela permite conferir o fluxo no navegador e não substitui o frontend definitivo da equipe. Instruções em [BRASILAPI_FERIADOS.md](../docs/BRASILAPI_FERIADOS.md).
 
@@ -21,3 +21,7 @@ Ainda falta configurar e aplicar o complemento no Neon autorizado, criar adminis
 ## Correção de estrutura — 13/10/2026
 
 A migração e o `/ready` agora compartilham a validação estrutural das tabelas de apoio. Incompatibilidades interrompem a migração e retornam 503 no `/ready`. Ver `docs/api/CORRECAO-VALIDACAO-ESTRUTURA-13-10-2026.md` (a partir da raiz do repositório). Para regenerar a migração após mudar o contrato, executar `node scripts/build-migration.js` na pasta backend; esse comando não acessa o banco.
+
+## Entrega E1 — 23/10/2026
+
+Ler `docs/api/ENTREGA-E1-API-2.1.md` a partir da raiz do projeto. Swagger em `/docs/`, contrato em `/openapi.json` e coleção `docs/api/lar-ternura-api-2.1.postman_collection.json`. A busca administrativa aceita q e múltiplos status; a rota receber-e-concluir é atômica. Metas atingidas continuam aceitando promessas enquanto abertas e com produto ativo.

@@ -1,4 +1,4 @@
-# API 2.0.0 — contrato de integração
+# API 2.1.0 — contrato de integração
 
 Contrato completo: `openapi.json`. URL local: `http://localhost:3000`. Nenhuma URL pública foi criada.
 
@@ -16,7 +16,7 @@ Enviar `POST /agendamentos` com cabeçalho `Idempotency-Key` aleatório de 16–
 }
 ```
 
-IDs e data acima são exemplos fictícios: usar valores reais retornados pela API e horários futuros autorizados. Sucesso novo: 201; repetição do mesmo corpo/chave: 200 com o mesmo agendamento/código. 409 para vaga lotada, meta alterada/atendida ou chave reutilizada com outro corpo. O código privado só autoriza aquele agendamento e não permite operar rotas ONG.
+IDs e data acima são exemplos fictícios: usar valores reais retornados pela API e horários futuros autorizados. Sucesso novo: 201; repetição do mesmo corpo/chave: 200 com o mesmo agendamento/código. 409 para vaga lotada, meta alterada ou chave reutilizada com outro corpo. O código privado só autoriza aquele agendamento e não permite operar rotas ONG.
 
 ## Produtos e metas
 
@@ -57,3 +57,7 @@ Aplicar complemento/grants por responsável autorizado, confirmar dados persiste
 ## Correção de estrutura — 13/10/2026
 
 A migração e o `/ready` agora compartilham a validação estrutural das tabelas de apoio. Incompatibilidades interrompem a migração e retornam 503 no `/ready`. Ver `docs/api/CORRECAO-VALIDACAO-ESTRUTURA-13-10-2026.md` (a partir da raiz do repositório). Para regenerar a migração após mudar o contrato, executar `node scripts/build-migration.js` na pasta backend; esse comando não acessa o banco.
+
+## Entrega E1 — 23/10/2026
+
+Ler `docs/api/ENTREGA-E1-API-2.1.md` a partir da raiz do projeto. Swagger em `/docs/`, contrato em `/openapi.json` e coleção `docs/api/lar-ternura-api-2.1.postman_collection.json`. A busca administrativa aceita q e múltiplos status; a rota receber-e-concluir é atômica. Metas atingidas continuam aceitando promessas enquanto abertas e com produto ativo.
