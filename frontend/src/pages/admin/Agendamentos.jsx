@@ -11,6 +11,7 @@ import { Botao } from '../../components/ui/Botao.jsx';
 import { Alerta } from '../../components/ui/Alerta.jsx';
 import { Campo } from '../../components/ui/Campo.jsx';
 import { SeletorQuantidade } from '../../components/ui/SeletorQuantidade.jsx';
+import { AjudaConversao } from '../../components/admin/AjudaConversao.jsx';
 import { EscolherHorario } from '../../components/ui/EscolherHorario.jsx';
 import { Carregando, ErroCarregamento, Vazio } from '../../components/ui/Estados.jsx';
 import { diasDeAtraso, formatarData, formatarHora, formatarNumero, primeiroNome } from '../../utils/formatar.js';
@@ -293,6 +294,8 @@ function FormConcluir({ ag, aoConcluir }) {
                   <SeletorQuantidade id={id} min={0} max={i.falta} valor={quantidades[i.id_item]} unidade={i.unidade_medida}
                     rotulo={`quantidade de ${i.nome_item} que chegou`} erro={!quantidadeOk(quantidades[i.id_item], i.falta)}
                     aoMudar={(q) => setQuantidades((atual) => ({ ...atual, [i.id_item]: q }))} />
+                  <AjudaConversao nome={i.nome_item} unidade={i.unidade_medida} maximo={i.falta}
+                    aoUsar={(q) => setQuantidades((atual) => ({ ...atual, [i.id_item]: q }))} />
                 </li>
               );
             })}

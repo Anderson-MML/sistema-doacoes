@@ -54,6 +54,9 @@
     letter-spacing: -0.01em;
   }
 
+  /* Por padrão o <fieldset> não encolhe abaixo do conteúdo e faz a página rolar de lado no celular. */
+  fieldset { min-inline-size: 0; }
+
   /* Foco sempre visível e espesso, para quem navega por teclado. */
   :focus-visible {
     outline: 3px solid var(--color-lar);
@@ -81,9 +84,22 @@
 
 dialog::backdrop { background: rgb(34 48 74 / 0.55); }
 
+/* Impressão e "Salvar em PDF": só o conteúdo do documento, em preto sobre branco. */
+.so-impressao { display: none; }
+
 @media print {
-  header, nav, footer, button, .pular-link, aside[aria-label="Aviso de demonstração"] { display: none; }
-  body, .bg-nevoa { background: #fff; }
+  @page { margin: 1.5cm; }
+  html { font-size: 11pt; }
+  header, nav, footer, button, .pular-link, .nao-imprimir,
+  aside[aria-label="Aviso de demonstração"] { display: none !important; }
+  .so-impressao { display: block; }
+  body, .bg-nevoa, .bg-papel { background: #fff !important; }
+  #conteudo { grid-column: 1 / -1; }
+  .overflow-x-auto { overflow: visible !important; border: 0 !important; }
+  table { border-collapse: collapse; width: 100%; }
+  th, td { border: 1px solid #8a8a8a; padding: 4pt 6pt !important; }
+  thead { display: table-header-group; }
+  tr { break-inside: avoid; }
 }
 
 @media (prefers-reduced-motion: reduce) {

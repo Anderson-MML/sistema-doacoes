@@ -20,6 +20,7 @@ const RegistrarDoacao = lazy(() => import('./pages/admin/RegistrarDoacao.jsx'));
 const Necessidades = lazy(() => import('./pages/admin/Necessidades.jsx'));
 const Produtos = lazy(() => import('./pages/admin/Produtos.jsx'));
 const Relatorio = lazy(() => import('./pages/admin/Relatorio.jsx'));
+const Situacao = lazy(() => import('./pages/admin/Situacao.jsx'));
 
 function GerenciarFoco() {
   const { pathname } = useLocation();
@@ -67,6 +68,7 @@ export default function App() {
                 <Route path="necessidades" element={<Necessidades />} />
                 <Route path="produtos" element={<Produtos />} />
                 <Route path="relatorio" element={<Relatorio />} />
+                <Route path="situacao" element={<Situacao />} />
                 <Route path="*" element={<NaoEncontrada />} />
               </Route>
             </Route>

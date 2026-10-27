@@ -16,7 +16,7 @@ export const CONTA_DEMO = { email: 'admin@demo.org', senha: 'demo12345' };
 
 /** Configuração equivalente a DELIVERY_TIMES e SLOT_CAPACITY da API (valores provisórios). */
 export const HORARIOS_DEMO = ['09:00', '10:00', '11:00', '14:00', '15:00', '16:00'];
-export const CAPACIDADE_DEMO = 3;
+export const CAPACIDADE_DEMO = 10; // SLOT_CAPACITY combinado com o Vinicius
 
 export function criarDadosIniciais() {
   const agora = new Date().toISOString();

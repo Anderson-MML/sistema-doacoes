@@ -9,6 +9,7 @@ const LINKS = [
   { para: '/admin/registrar', texto: 'Registrar doação' },
   { para: '/admin/necessidades', texto: 'Necessidades' },
   { para: '/admin/produtos', texto: 'Produtos' },
+  { para: '/admin/situacao', texto: 'Situação das necessidades' },
   { para: '/admin/relatorio', texto: 'Relatório do mês' },
 ];
 

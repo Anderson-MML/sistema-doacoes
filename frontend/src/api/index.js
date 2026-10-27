@@ -7,6 +7,16 @@ const txt = (v) => (v === null || v === undefined ? null : String(v));
 const num = (v) => (v === null || v === undefined || v === '' ? 0 : Number(v));
 const idNum = (v) => (v === null || v === undefined || v === '' ? null : Number(v));
 
+/** Lê todas as páginas (limit/offset). `parar(pagina)` encerra antes quando o restante não interessa. */
+export async function buscarTodas(caminho, { params = {}, parar, ...opcoes } = {}) {
+  const todas = [];
+  for (let offset = 0; ; offset += LIMITE) {
+    const pagina = await requisitar('GET', caminho, { ...opcoes, params: { ...params, limit: LIMITE, offset } });
+    todas.push(...pagina);
+    if (pagina.length < LIMITE || parar?.(pagina)) return todas;
+  }
+}
+
 // ---------------------------------------------------------------- categorias de urgência
 
 let categoriasEmCache = null;
@@ -100,8 +110,8 @@ export const verificarSaude = () => requisitar('GET', '/health');
 export const verificarProntidao = () => requisitar('GET', '/ready');
 
 export async function listarNecessidades({ busca, categoria, nivel } = {}) {
-  const lista = await requisitar('GET', '/necessidades', {
-    params: { q: busca || undefined, categoria: categoria || undefined, limit: LIMITE },
+  const lista = await buscarTodas('/necessidades', {
+    params: { q: busca || undefined, categoria: categoria || undefined },
   });
   let itens = lista.map(necessidadePublica);
   const niveis = (Array.isArray(nivel) ? nivel : []).map(Number);
@@ -113,7 +123,7 @@ export async function listarNecessidades({ busca, categoria, nivel } = {}) {
 }
 
 export async function obterFiltros() {
-  const [categorias, todas] = await Promise.all([listarCategorias(), requisitar('GET', '/necessidades', { params: { limit: LIMITE } })]);
+  const [categorias, todas] = await Promise.all([listarCategorias(), buscarTodas('/necessidades')]);
   return {
     urgencias: categorias.map(urgenciaDe),
     categorias: [...new Set(todas.map((n) => n.categoria_suprimento).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'pt-BR')),
@@ -123,6 +133,29 @@ export async function obterFiltros() {
 export async function consultarDisponibilidade(data) {
   const r = await requisitar('GET', '/disponibilidade', { params: { data } });
   return (r.horarios ?? []).map((h) => ({ horario: h.horario, capacidade: num(h.capacidade), vagas: num(h.vagas) }));
+}
+
+const feriadosEmCache = new Map();
+
+/**
+ * GET /calendario/feriados/{ano}: feriados nacionais da BrasilAPI, consultados pelo backend.
+ * Só informativo: nunca bloqueia o agendamento. Se a consulta falhar, devolve
+ * { disponivel: false } (e não uma lista vazia, que pareceria "sem feriados").
+ */
+export async function consultarFeriados(ano) {
+  if (!feriadosEmCache.has(ano)) {
+    const consulta = requisitar('GET', `/calendario/feriados/${ano}`)
+      .then((r) => (r?.status === 'disponivel' && Array.isArray(r.feriados)
+        ? { disponivel: true, feriados: r.feriados.map((f) => ({ data: f.data, nome: String(f.nome) })) }
+        : { disponivel: false, feriados: [] }));
+    feriadosEmCache.set(ano, consulta);
+    consulta.then((r) => { if (!r.disponivel) feriadosEmCache.delete(ano); }, () => feriadosEmCache.delete(ano));
+  }
+  try {
+    return await feriadosEmCache.get(ano);
+  } catch {
+    return { disponivel: false, feriados: [] };
+  }
 }
 
 export async function criarAgendamento({ chave, doador, data, horario, itens }) {
@@ -171,8 +204,8 @@ export async function sairDaSessao() {
 
 // ================================================================ ADMIN: agendamentos e recebimentos
 
-async function listarDoacoesBrutas() {
-  return requisitar('GET', '/doacoes', { ...admin, params: { limit: LIMITE } });
+async function listarDoacoesBrutas(parar) {
+  return buscarTodas('/doacoes', { ...admin, parar });
 }
 
 function somarRecebidos(doacoes) {
@@ -198,19 +231,24 @@ export async function listarAgendamentosAdmin({ periodo = 'hoje', incluirEncerra
   const q = busca.trim();
   const [de, ate] = PERIODOS[periodo]();
   const semRecorte = Boolean(q) || periodo === 'abertas';
-  const lista = await requisitar('GET', '/admin/agendamentos', {
+  const intervalo = !semRecorte && periodo !== 'hoje';
+  const dia = (a) => a.data_hora_agendada.slice(0, 10);
+  const lista = await buscarTodas('/admin/agendamentos', {
     ...admin,
     params: {
-      limit: LIMITE,
       q: q || undefined,
       data: !q && periodo === 'hoje' ? de : undefined,
+      de: intervalo ? de : undefined,
+      ate: intervalo ? ate : undefined,
       status: incluirEncerrados && !(periodo === 'abertas' && !q) ? undefined : 'Pendente,Confirmado',
     },
+    // de/ate ainda não existem na API 2.1 (são ignorados); até lá, o recorte e a parada abaixo garantem o período.
+    parar: semRecorte ? undefined : (pagina) => dia(pagina.at(-1)) < de,
   });
   const semTotais = lista.some((a) => (a.itens ?? []).some((i) => i.quantidade_recebida === undefined));
   const recebidos = semTotais ? somarRecebidos(await listarDoacoesBrutas()) : new Map();
   const agendamentos = lista
-    .filter((a) => { const dia = a.data_hora_agendada.slice(0, 10); return semRecorte || (dia >= de && dia <= ate); })
+    .filter((a) => semRecorte || (dia(a) >= de && dia(a) <= ate))
     .map((a) => agendamentoInterno(a, recebidos));
   return { total: agendamentos.length, agendamentos };
 }
@@ -261,15 +299,15 @@ export const estornarRecebimento = (id, motivo) =>
   requisitar('PATCH', `/doacoes/${id}/estornar`, { ...admin, corpo: { motivo } });
 
 export async function obterResumo() {
+  const mes = mesAtualSP();
+  const mesDe = (iso) => { const p = partesSP(paraInstante(iso)); return `${p.ano}-${p.mes}`; };
   const [hoje, semana, abertas, termometro, doacoes] = await Promise.all([
     listarAgendamentosAdmin({ periodo: 'hoje' }),
     listarAgendamentosAdmin({ periodo: 'semana' }),
     listarAgendamentosAdmin({ periodo: 'abertas' }),
     listarNecessidades(),
-    listarDoacoesBrutas(),
+    listarDoacoesBrutas((pagina) => pagina.every((d) => mesDe(d.ocorrido_em) < mes)),
   ]);
-  const mes = mesAtualSP();
-  const mesDe = (iso) => { const p = partesSP(paraInstante(iso)); return `${p.ano}-${p.mes}`; };
   return {
     agendamentos_hoje: hoje.total,
     agendamentos_proximos_7_dias: semana.total,
@@ -285,9 +323,9 @@ export async function obterResumo() {
 
 export async function listarNecessidadesAdmin(status = 'Aberta') {
   const [lista, categorias, catalogo] = await Promise.all([
-    requisitar('GET', '/admin/necessidades/historico', { ...admin, params: { limit: LIMITE } }),
+    buscarTodas('/admin/necessidades/historico', admin),
     listarCategorias(),
-    requisitar('GET', '/admin/itens', { ...admin, params: { limit: LIMITE } }),
+    buscarTodas('/admin/itens', admin),
   ]);
   const ativos = new Map(catalogo.map((p) => [p.id_item, p.ativo]));
   const porNome = new Map(categorias.map((c) => [c.nome_categoria, c]));
@@ -337,13 +375,14 @@ export const encerrarNecessidade = (id, status) =>
 // ================================================================ ADMIN: catálogo de produtos
 
 export async function listarItens(ativo = 'todos') {
-  const [catalogo, categorias, abertas] = await Promise.all([
-    requisitar('GET', '/admin/itens', { ...admin, params: { limit: LIMITE } }),
+  const [catalogo, categorias, historico] = await Promise.all([
+    buscarTodas('/admin/itens', admin),
     listarCategorias(),
-    listarNecessidadesAdmin('Aberta'),
+    buscarTodas('/admin/necessidades/historico', admin),
   ]);
   const porId = new Map(categorias.map((c) => [c.id_categoria, c]));
-  const metaAberta = new Map(abertas.necessidades.map((n) => [n.id_item, n]));
+  const metaAberta = new Map(historico.filter((n) => n.status === 'Aberta').map((n) => [txt(n.id_item), txt(n.id_necessidade)]));
+  const comMetas = new Set(historico.map((n) => txt(n.id_item)));
   const itens = catalogo
     .filter((p) => ativo === 'todos' || String(p.ativo) === ativo)
     .sort((a, b) => a.nome_item.localeCompare(b.nome_item, 'pt-BR'))
@@ -354,7 +393,8 @@ export async function listarItens(ativo = 'todos') {
       categoria_suprimento: p.categoria_suprimento,
       ativo: p.ativo,
       urgencia_sugerida: urgenciaDe(porId.get(p.id_categoria)),
-      id_necessidade_aberta: metaAberta.get(txt(p.id_item))?.id_necessidade ?? null,
+      id_necessidade_aberta: metaAberta.get(txt(p.id_item)) ?? null,
+      unidade_em_uso: comMetas.has(txt(p.id_item)),
     }));
   return { total: itens.length, itens };
 }
@@ -369,6 +409,7 @@ export async function criarItem({ nome_item, unidade_medida, categoria_supriment
       await requisitar('POST', '/admin/necessidades', { ...admin, corpo: { id_item: produto.id_item, id_categoria, quantidade_meta } });
     } catch (e) {
       e.message = `Produto cadastrado, mas a necessidade não foi aberta: ${e.message} Abra pela tela Necessidades.`;
+      e.parcial = true;
       throw e;
     }
   }
@@ -383,9 +424,33 @@ export async function atualizarItem(id, { nome_item, unidade_medida, categoria_s
 
 export const desativarItem = (id) => requisitar('DELETE', `/itens/${id}`, admin);
 
+/**
+ * A unidade de um produto com metas não muda: cadastra um produto novo na nova unidade, encerra a meta
+ * do antigo e o desativa. Se ainda houver entregas agendadas com o antigo, ele fica ativo para recebê-las.
+ */
+export async function trocarUnidadeItem(antigo, { nome_item, unidade_medida, quantidade_meta }) {
+  const novo = await criarItem({
+    nome_item, unidade_medida, quantidade_meta,
+    categoria_suprimento: antigo.categoria_suprimento, nivel: antigo.urgencia_sugerida.nivel,
+  });
+  try {
+    if (antigo.id_necessidade_aberta) await encerrarNecessidade(antigo.id_necessidade_aberta, 'Encerrada');
+    const { agendamentos } = await listarAgendamentosAdmin({ periodo: 'abertas' });
+    const pendentes = agendamentos
+      .filter((a) => a.itens.some((i) => i.id_item === antigo.id_item && i.status_item === 'Agendado'))
+      .map((a) => a.id_agendamento);
+    if (!pendentes.length) await desativarItem(antigo.id_item);
+    return { novo, pendentes };
+  } catch (e) {
+    e.message = `O produto novo foi cadastrado, mas o antigo não foi encerrado: ${e.message} Encerre a necessidade e desative o produto antigo manualmente.`;
+    e.parcial = true;
+    throw e;
+  }
+}
+
 // ================================================================ ADMIN: relatório
 
 export async function obterArrecadacaoMensal(mes = mesAtualSP()) {
-  const lista = await requisitar('GET', '/admin/arrecadacao/mensal', { ...admin, params: { mes, limit: LIMITE } });
+  const lista = await buscarTodas('/admin/arrecadacao/mensal', { ...admin, params: { mes } });
   return lista.map((l) => ({ ...l, id_item: txt(l.id_item), quantidade_arrecadada: num(l.quantidade_arrecadada), entregas: num(l.entregas) }));
 }

@@ -6,6 +6,7 @@ import { Botao } from '../ui/Botao.jsx';
 import { Alerta } from '../ui/Alerta.jsx';
 import { Campo } from '../ui/Campo.jsx';
 import { SeletorQuantidade } from '../ui/SeletorQuantidade.jsx';
+import { AjudaConversao } from './AjudaConversao.jsx';
 import { formatarNumero, DESLOCAMENTO_SP, hojeSP, partesSP } from '../../utils/formatar.js';
 import { gerarUuid, quantidadeValida } from '../../utils/validar.js';
 
@@ -129,6 +130,7 @@ export function FormRecebimento({ agendamento = null, aoConcluir, aoCancelar }) 
                     <SeletorQuantidade id={idQtd} valor={l.quantidade} unidade={l.unidade_medida}
                       rotulo={`quantidade de ${l.nome_item} que chegou`} erro={!quantidadeValida(l.quantidade)}
                       aoMudar={(q) => atualizar({ quantidade: q })} />
+                    <AjudaConversao nome={l.nome_item} unidade={l.unidade_medida} aoUsar={(q) => atualizar({ quantidade: q })} />
                     {l.id_necessidade ? (
                       <label className="flex min-h-11 cursor-pointer items-center gap-3">
                         <input type="checkbox" className="size-5 accent-lar" checked={l.somarMeta} onChange={(e) => atualizar({ somarMeta: e.target.checked })} />
