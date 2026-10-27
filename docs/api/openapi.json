@@ -1911,7 +1911,7 @@
             "SessaoONG": []
           }
         ],
-        "description": "Trava o agendamento e usa a meta aberta atual por produto; sem meta aberta, registra sem vínculo. Aceita atrasados. Idempotência compara administrador, agendamento e corpo, e não permite reutilizar a chave em POST /doacoes. Produto inativo com saldo a receber gera 409. Repetição de concluído não cria doação adicional. Datas de recebimento são atribuídas pelo servidor.",
+        "description": "Trava o agendamento e usa a meta aberta atual por produto; sem meta aberta, registra sem vínculo. Aceita atrasados. Idempotência compara administrador, agendamento e corpo, e não permite reutilizar a chave em POST /doacoes. Produto inativo com saldo a receber gera 409. Repetição de concluído não cria doação adicional. Datas de recebimento são atribuídas pelo servidor. Se a meta mudar enquanto sua trava é obtida, a API relê a seleção. Após cinco tentativas sem estabilização, retorna 409 META_EM_ALTERACAO e desfaz a operação; a mesma chave pode ser usada no retry.",
         "parameters": [
           {
             "name": "id",
@@ -2002,7 +2002,7 @@
             }
           },
           "409": {
-            "description": "Cancelado, produto inativo, chave reutilizada ou entrega parcial sem motivo. Toda a operação é desfeita.",
+            "description": "Cancelado, produto inativo, chave reutilizada ou entrega parcial sem motivo. Toda a operação é desfeita. Inclui META_EM_ALTERACAO: metas mudando repetidamente; nenhum recebimento desta tentativa foi gravado.",
             "content": {
               "application/json": {
                 "schema": {

@@ -11,3 +11,7 @@ Swagger em /docs e /docs/, assets locais e contrato em /openapi.json foram testa
 Resultado integral: RESULTADO-TESTES-E1.txt. Banco PGlite descartável; nenhuma conexão de teste usa DATABASE_URL real. As 25 verificações SQL originais fazem parte de um dos testes anteriores, não são 25 testes adicionais. O comando explícito evita contar módulos de apoio como casos.
 
 Não comprova concorrência com conexões PostgreSQL independentes, produção, leitor de tela ou implantação. Não houve publicação no GitHub, migração no Neon, alteração no Render nem mudança do frontend final.
+
+## Complemento de 26/10/2026
+
+A correção de concorrência preservou os 95 testes anteriores. Além deles, nove casos de concorrência passaram em PostgreSQL 17.11 local, com sessões independentes, READ COMMITTED e role limitada (104 casos entre as duas suítes). A falha original foi reproduzida no código anterior. Os novos testes cobrem as duas ordens de execução, SQL direto, múltiplos produtos, ausência real de meta, repetição idempotente, rollback e ordem numérica de travas. Resultados: RESULTADO-REGRESSAO-CONCORRENCIA.txt e RESULTADO-POSTGRES-CONCORRENCIA.txt. O teste anterior em REPRODUCAO-ANTES-DA-CORRECAO.txt falha intencionalmente para demonstrar o defeito. Nenhuma validação nova foi feita no Neon nesta preparação.

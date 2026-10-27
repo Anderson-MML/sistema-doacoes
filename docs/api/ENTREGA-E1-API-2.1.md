@@ -77,3 +77,7 @@ Para abrir Swagger, iniciar a API com configuração de um banco de teste autori
 - Usuário master fica para evolução futura. A capacidade de dez vagas e o possível bloqueio de feriados dependem do alinhamento com Vinicius. O calendário desta entrega permanece informativo.
 - Testes locais comprovam comportamento e rollback no PGlite, que serializa operações. Concorrência com conexões PostgreSQL independentes e deploy real continuam na validação da equipe.
 - Frontend, PDF, migração no ambiente compartilhado e publicação permanecem com os responsáveis definidos pelo grupo.
+
+## Correção de concorrência — 26/10/2026
+
+A seleção da meta em receber-e-concluir agora relê após uma renovação concorrente. Novas tentativas que não estabilizam após cinco leituras/travas respondem 409 META_EM_ALTERACAO, com rollback integral e possibilidade de repetir a mesma chave. Guia e evidências: docs/api/CORRECAO-CONCORRENCIA-METAS-26-10-2026.md a partir da raiz do repositório. A suíte PostgreSQL local é executada com PG_BIN configurado e pnpm test:postgres; não usa DATABASE_URL ou Neon.

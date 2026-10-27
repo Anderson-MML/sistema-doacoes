@@ -92,6 +92,17 @@ class Store{
   await tx.query('UPDATE api_apoio.requisicoes_recebimento SET id_recebimento=$1 WHERE chave=$2',[id,key]);
   return this.donation(id,tx);
  }
+ async lockCurrentNeeds(tx,ids){
+  // READ COMMITTED: separar a descoberta da trava permite reler após uma renovação.
+  // WHERE apenas pelo ID na trava: uma meta encerrada durante a espera não pode sumir.
+  for(let attempt=0;attempt<5;attempt++){
+   const candidates=(await tx.query("SELECT id_item,id_necessidade::text FROM arrecadacao.necessidades WHERE id_item=ANY($1::int[]) AND status='Aberta' ORDER BY necessidades.id_necessidade",[ids])).rows;
+   if(!candidates.length)return[];
+   const locked=(await tx.query('SELECT id_item,id_necessidade::text,status FROM arrecadacao.necessidades WHERE id_necessidade=ANY($1::bigint[]) ORDER BY necessidades.id_necessidade FOR UPDATE',[candidates.map(n=>n.id_necessidade)])).rows;
+   if(locked.length===candidates.length&&locked.every(n=>n.status==='Aberta'))return locked;
+  }
+  fail(409,'META_EM_ALTERACAO','As metas estão sendo alteradas. Tente novamente com a mesma chave; nenhum recebimento desta tentativa foi gravado.');
+ }
  async receiveAndConclude(id,b,key,u,now=new Date()){
   // O hash inclui rota, agendamento e corpo; não pode ser reutilizado em POST /doacoes.
   const hash=SEC.hash(JSON.stringify({operacao:'receber-e-concluir',id,...b}));
@@ -118,7 +129,7 @@ class Store{
     const ids=quantities.map(i=>i.id_item).sort((a,b)=>a-b);
     const products=(await tx.query('SELECT id_item,nome_item,ativo FROM public.itens_necessidades WHERE id_item=ANY($1::int[]) ORDER BY id_item FOR SHARE',[ids])).rows;
     for(const idItem of ids){const product=products.find(p=>p.id_item===idItem);if(!product?.ativo)fail(409,'PRODUTO_INATIVO',`O produto ${product?.nome_item||idItem} foi desativado. Revise o agendamento pelo fluxo detalhado.`);}
-    const needs=(await tx.query("SELECT id_item,id_necessidade::text FROM arrecadacao.necessidades WHERE id_item=ANY($1::int[]) AND status='Aberta' ORDER BY id_necessidade FOR UPDATE",[ids])).rows;
+    const needs=await this.lockCurrentNeeds(tx,ids);
     const receipt={id_agendamento:id,id_doador:null,ocorrido_em:now.toISOString(),itens:quantities.map(i=>({...i,id_necessidade:needs.find(n=>n.id_item===i.id_item)?.id_necessidade??null}))};
     doacao=await this.receiveInTransaction(tx,receipt,key,u);
    }
