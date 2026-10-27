@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { consultarDisponibilidade } from '../../api/index.js';
+import { consultarDisponibilidade, consultarFeriados } from '../../api/index.js';
 import { Campo } from './Campo.jsx';
 import { formatarData, hojeSP } from '../../utils/formatar.js';
 
@@ -8,6 +8,39 @@ const chip = 'flex min-h-11 cursor-pointer items-center gap-2 rounded-lg border-
   + 'has-[:disabled]:cursor-not-allowed has-[:disabled]:border-linha has-[:disabled]:text-tinta-suave has-[:disabled]:line-through '
   + 'has-[:focus-visible]:outline-3 has-[:focus-visible]:outline-offset-2 has-[:focus-visible]:outline-lar';
 
+/**
+ * Aviso de feriado nacional (BrasilAPI, via backend). Só informa: a decisão do grupo é não
+ * bloquear feriados, porque a ONG pode receber doações nesses dias.
+ * A região aria-live fica sempre na página, para leitores de tela anunciarem cada mudança.
+ */
+function AvisoFeriado({ data }) {
+  const [estado, setEstado] = useState({ data: null, feriado: null, indisponivel: false });
+
+  useEffect(() => {
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(data ?? '')) { setEstado({ data: null, feriado: null, indisponivel: false }); return undefined; }
+    let ativo = true;
+    consultarFeriados(Number(data.slice(0, 4))).then((r) => {
+      if (!ativo) return;
+      setEstado({ data, feriado: r.disponivel ? r.feriados.find((f) => f.data === data) ?? null : null, indisponivel: !r.disponivel });
+    });
+    return () => { ativo = false; };
+  }, [data]);
+
+  const atual = estado.data === data;
+  return (
+    <div aria-live="polite">
+      {atual && estado.feriado && (
+        <div className="rounded-lg border-l-8 border-media bg-media-claro px-4 py-3">
+          <p><strong>Feriado nacional: {estado.feriado.nome}.</strong> Confira se o Lar Ternura recebe doações nesse dia. O agendamento continua permitido.</p>
+          <p className="mt-1 text-sm text-tinta-suave">Fonte: BrasilAPI.</p>
+        </div>
+      )}
+      {atual && estado.indisponivel && (
+        <p className="text-sm text-tinta-suave">Não foi possível consultar o calendário de feriados agora. Os horários abaixo continuam valendo.</p>
+      )}
+    </div>
+  );
+}
 
 export function EscolherHorario({ data, horario, aoMudar, erroData, erroHorario, idData = 'data', idHorario = 'hora' }) {
   const [estado, setEstado] = useState({ carregando: false, horarios: null, erro: null });
@@ -32,6 +65,8 @@ export function EscolherHorario({ data, horario, aoMudar, erroData, erroHorario,
         <input type="date" min={hojeSP()} value={data}
           onChange={(e) => aoMudar({ data: e.target.value, horario: '' })} className="sm:max-w-xs" />
       </Campo>
+
+      <AvisoFeriado data={data} />
 
       {data && (
         <fieldset id={idHorario} tabIndex={-1} aria-describedby={erroHorario ? `${idHorario}-erro` : undefined}>

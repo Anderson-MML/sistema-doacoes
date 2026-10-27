@@ -3,6 +3,7 @@ import { obterArrecadacaoMensal } from '../../api/index.js';
 import { useCarregar } from '../../hooks/useCarregar.js';
 import { useTitulo } from '../../hooks/useTitulo.js';
 import { CabecalhoPagina, Painel } from '../../components/admin/LayoutAdmin.jsx';
+import { CabecalhoImpressao } from '../../components/admin/CabecalhoImpressao.jsx';
 import { Botao } from '../../components/ui/Botao.jsx';
 import { Campo } from '../../components/ui/Campo.jsx';
 import { Carregando, ErroCarregamento, Vazio } from '../../components/ui/Estados.jsx';
@@ -21,11 +22,12 @@ export default function Relatorio() {
 
   return (
     <div>
+      <CabecalhoImpressao detalhe={valido ? `Mês: ${nomeDoMes(mes)}` : undefined} />
       <CabecalhoPagina titulo="Relatório do mês"
         descricao="O que chegou de fato ao Lar no mês, por produto. Promessas que não chegaram e doações estornadas não entram."
-        acao={<Botao variante="secundario" onClick={() => window.print()} disabled={!linhas.length}>Imprimir</Botao>} />
+        acao={<Botao variante="secundario" onClick={() => window.print()} disabled={!linhas.length}>Imprimir ou salvar em PDF</Botao>} />
 
-      <Painel className="mb-6">
+      <Painel className="nao-imprimir mb-6">
         <Campo id="mes-relatorio" rotulo="Mês" erro={valido ? undefined : 'Escolha um mês até o atual.'} className="sm:max-w-xs">
           <input type="month" value={mes} max={atual} onChange={(e) => setMes(e.target.value)} />
         </Campo>
@@ -44,7 +46,7 @@ export default function Relatorio() {
           <h2 id="titulo-tabela" className="mb-3 text-xl font-bold first-letter:uppercase">
             {nomeDoMes(mes)}: {linhas.length === 1 ? '1 produto' : `${linhas.length} produtos`}
           </h2>
-          <div className="relative overflow-x-auto rounded-xl border border-linha bg-papel">
+          <div tabIndex={0} role="region" aria-label="Tabela das doações recebidas no mês" className="relative overflow-x-auto rounded-xl border border-linha bg-papel">
             <table className="w-full text-left">
               <caption className="so-leitor">Doações recebidas em {nomeDoMes(mes)}, por produto</caption>
               <thead className="bg-nevoa">

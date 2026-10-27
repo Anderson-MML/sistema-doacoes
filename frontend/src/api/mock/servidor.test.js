@@ -2,7 +2,8 @@
 // resultados esperados da documentação do banco (seção 9). Rodar com: npm test
 import { describe, it, expect, beforeEach } from 'vitest';
 import { tratarRequisicao, restaurarDadosMock } from './servidor.js';
-import { HORARIOS_DEMO } from './dados.js';
+import { HORARIOS_DEMO, CAPACIDADE_DEMO } from './dados.js';
+import { diaSP } from '../../utils/formatar.js';
 
 const req = (metodo, caminho, extra = {}) => tratarRequisicao({ metodo, caminho, latencia: 0, ...extra });
 const uuid = () => crypto.randomUUID();
@@ -59,8 +60,8 @@ describe('POST /agendamentos', () => {
     expect(r.status).toBe(409); // sabão está em 125%
   });
 
-  it('lota o horário pela capacidade', async () => {
-    for (let n = 0; n < 3; n += 1) {
+  it('lota o horário pela capacidade (10 vagas)', async () => {
+    for (let n = 0; n < CAPACIDADE_DEMO; n += 1) {
       await req('POST', '/agendamentos', { corpo: corpo({ doador: { nome: 'Pessoa', email: `p${n}@example.com`, telefone: '11999999999' } }), cabecalhos: { 'Idempotency-Key': uuid() } });
     }
     const disp = (await req('GET', '/disponibilidade', { params: { data: amanha() } })).corpo;
@@ -153,6 +154,14 @@ describe('GET /admin/agendamentos: ordem e busca (itens 1 e 3)', () => {
     expect(ids(await listar({ q: 'ninguém' }))).toEqual([]);
   });
 
+  it('de/ate recortam o período (datas de SP, inclusivas)', async () => {
+    expect(ids(await listar({ de: diaSP(0), ate: diaSP(7) }))).toEqual([4, 3, 5]);
+    expect(ids(await listar({ de: diaSP(0), ate: diaSP(0) }))).toEqual([5]);
+    expect(ids(await listar({ ate: diaSP(-1) }))).toEqual([1, 2]);
+    expect((await listar({ de: diaSP(7), ate: diaSP(0) })).status).toBe(422);
+    expect((await listar({ de: '26/10/2026' })).status).toBe(422);
+  });
+
   it('cada item traz o total já recebido', async () => {
     const maria = (await listar({ q: '#1' })).corpo[0];
     expect(maria.itens.find((i) => i.id_item === 4).quantidade_recebida).toBe(22);
@@ -223,5 +232,19 @@ describe('metas e catálogo', () => {
     expect((await req('PUT', '/itens/4', { token: t, corpo: base })).status).toBe(409);
     expect((await req('DELETE', '/itens/4', { token: t })).status).toBe(204);
     expect((await req('GET', '/necessidades', { params: { q: 'leite' } })).corpo).toHaveLength(0);
+  });
+});
+
+describe('GET /calendario/feriados/:ano (formato do PR #32)', () => {
+  it('devolve feriados nacionais com status disponivel', async () => {
+    const r = await req('GET', '/calendario/feriados/2026');
+    expect(r.status).toBe(200);
+    expect(r.corpo.status).toBe('disponivel');
+    expect(r.corpo.feriados).toEqual(expect.arrayContaining([{ data: '2026-11-02', nome: 'Finados', tipo: 'national' }]));
+    expect(r.corpo.feriados.find((f) => f.nome === 'Sexta-feira Santa').data).toBe('2026-04-03');
+  });
+
+  it('recusa ano inválido com 422', async () => {
+    expect((await req('GET', '/calendario/feriados/26')).status).toBe(422);
   });
 });

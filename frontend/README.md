@@ -44,7 +44,7 @@ Enquanto a API não tiver essas mudanças, a tela **Doações agendadas** só fu
 | --- | --- |
 | `npm run dev` | Servidor de desenvolvimento |
 | `npm run build` | Gera `dist/` para publicação |
-| `npm test` | 14 testes do servidor simulado contra o `openapi.json` e o cenário do banco |
+| `npm test` | 40 testes: servidor simulado, camada da API (paginação) e utilitários de datas e unidades |
 
 ## Estrutura
 
@@ -77,7 +77,7 @@ src/
 - Diálogos com `<dialog>` nativo (prende o foco, fecha com Esc). Avisos com `aria-live`.
 - Verificação automática com axe-core: 0 violações em 13 telas e diálogos. Sem rolagem lateral a 390 px.
 
-## Decisões de integração com a API 2.0.0
+## Decisões de integração com a API
 
 - **Idempotência:** `POST /agendamentos` e `POST /doacoes` enviam `Idempotency-Key` (UUID). A mesma chave
   só é reaproveitada quando a tentativa anterior falhou por rede; se a API respondeu, a próxima usa chave nova.
@@ -87,3 +87,25 @@ src/
 - **Link privado do doador:** `/meu-agendamento/{id}#{token_acesso}`. O código fica depois do `#`, então não
   é enviado a servidores nem aparece em logs. Também é guardado no aparelho em que o agendamento foi feito.
 - **Datas:** agendamentos chegam em hora local de São Paulo sem fuso; `paraInstante()` em `utils/formatar.js` trata.
+- **Paginação:** a API devolve no máximo 100 registros por página. `buscarTodas()` em `src/api/index.js` lê
+  todas as páginas. Na lista de agendamentos, a leitura para ao chegar a datas anteriores ao período pedido,
+  o que depende da ordenação por `data_hora_agendada` decrescente garantida pela API 2.1.
+
+## Decisões de produto
+
+- **Feriados são informados, não bloqueados.** Ao escolher a data, o formulário consulta
+  `GET /calendario/feriados/{ano}` (BrasilAPI, pelo backend) e, se for feriado nacional, mostra um aviso.
+  O agendamento continua permitido, porque a ONG pode receber doações nesses dias. Falha na consulta não
+  vira "sem feriados": a tela avisa que o calendário está indisponível.
+- **Capacidade de 10 vagas por horário** (`SLOT_CAPACITY` no backend; o simulador usa o mesmo valor).
+- **Produto, embalagem e unidade de contagem.** O cadastro tem campos separados (produto, como é contado,
+  conteúdo de cada unidade) e monta o nome no padrão "Macarrão espaguete, pacote de 500 g", com a unidade
+  escolhida numa lista fechada. A equivalência ("1 kg = 2 pacotes") aparece no cadastro, na lista de
+  produtos e no registro de doações, onde é possível converter peso ou volume em unidades. O valor gravado
+  é sempre um número inteiro na unidade de contagem; a conversão é só uma ajuda (`src/utils/apresentacao.js`).
+- **Unidade travada depois do uso.** Produto com metas não muda de unidade pela edição; a troca segue o
+  procedimento "Trocar a unidade", que cadastra um produto novo e preserva o histórico do antigo.
+- **Consulta e PDF.** "Situação das necessidades" mostra meta, recebido, falta e percentual por produto
+  (`GET /admin/necessidades/historico`). "Imprimir ou salvar em PDF" usa a impressão do navegador, com
+  estilos próprios para papel (`@media print` em `src/index.css`), sem biblioteca extra.
+

@@ -206,6 +206,32 @@ function getItem({ params }) {
   return n ?? naoEncontrado('Meta aberta do produto');
 }
 
+// Imita GET /calendario/feriados/:ano (BrasilAPI via backend, PR #32).
+function pascoa(ano) {
+  const a = ano % 19, b = Math.floor(ano / 100), c = ano % 100, d = Math.floor(b / 4), e = b % 4;
+  const f = Math.floor((b + 8) / 25), g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30, i = Math.floor(c / 4), k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7, m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const mes = Math.floor((h + l - 7 * m + 114) / 31), dia = ((h + l - 7 * m + 114) % 31) + 1;
+  return new Date(Date.UTC(ano, mes - 1, dia));
+}
+
+function getFeriados({ params }) {
+  const ano = Number(params.ano);
+  if (!/^\d{4}$/.test(params.ano) || ano < 1900 || ano > 2199) falhar(422, 'ANO_INVALIDO', 'Informe um ano entre 1900 e 2199.');
+  const p = pascoa(ano);
+  const rel = (dias) => new Date(p.getTime() + dias * 86400000).toISOString().slice(0, 10);
+  const feriados = [
+    [`${ano}-01-01`, 'Confraternização mundial'], [rel(-47), 'Carnaval'], [rel(-2), 'Sexta-feira Santa'],
+    [rel(0), 'Páscoa'], [`${ano}-04-21`, 'Tiradentes'], [`${ano}-05-01`, 'Dia do trabalho'],
+    [rel(60), 'Corpus Christi'], [`${ano}-09-07`, 'Independência do Brasil'],
+    [`${ano}-10-12`, 'Nossa Senhora Aparecida'], [`${ano}-11-02`, 'Finados'],
+    [`${ano}-11-15`, 'Proclamação da República'], [`${ano}-11-20`, 'Dia Nacional de Zumbi e da Consciência Negra'],
+    [`${ano}-12-25`, 'Natal'],
+  ].map(([data, nome]) => ({ data, nome, tipo: 'national' })).sort((x, y) => x.data.localeCompare(y.data));
+  return { status: 'disponivel', fonte: 'BrasilAPI', ano, consultado_em: new Date().toISOString(), feriados };
+}
+
 function getDisponibilidade({ query }) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(query.data ?? '')) invalido('Informe a data no formato AAAA-MM-DD.');
   const agora = Date.now();
@@ -434,6 +460,11 @@ function combinaBusca(a, q) {
 function getAgendamentosAdmin({ query }) {
   let lista = db.agendamentos;
   if (query.data) lista = lista.filter((a) => localSP(a.data_hora_agendada).startsWith(query.data));
+  const [de, ate] = [query.de, query.ate];
+  if ([de, ate].some((d) => d !== undefined && !/^\d{4}-\d{2}-\d{2}$/.test(d))) invalido('Período: use datas AAAA-MM-DD.');
+  if (de && ate && de > ate) invalido('Período: a data inicial deve ser anterior ou igual à final.');
+  if (de) lista = lista.filter((a) => localSP(a.data_hora_agendada).slice(0, 10) >= de);
+  if (ate) lista = lista.filter((a) => localSP(a.data_hora_agendada).slice(0, 10) <= ate);
   if (query.status) {
     const status = query.status.split(',').map((s) => s.trim());
     if (status.some((s) => !STATUS_AGENDAMENTO.includes(s))) invalido('Status inválido.');
@@ -584,7 +615,9 @@ function postDoacao({ corpo = {}, cabecalhos, usuario }) {
 }
 
 const getDoacoes = ({ query }) => paginar(
-  db.recebimentos.filter((r) => r.status !== 'Rascunho').sort((a, b) => b.id_recebimento - a.id_recebimento).map(recebimento), query,
+  db.recebimentos.filter((r) => r.status !== 'Rascunho')
+    .sort((a, b) => new Date(b.ocorrido_em) - new Date(a.ocorrido_em) || b.id_recebimento - a.id_recebimento)
+    .map(recebimento), query,
 );
 const getDoacao = ({ params }) => recebimento(db.recebimentos.find((r) => r.id_recebimento === Number(params.id)) ?? naoEncontrado('Recebimento'));
 
@@ -624,6 +657,7 @@ const ROTAS = [
   ['GET', '/admin/necessidades/historico', getHistorico, 'sessao'],
   ['GET', '/admin/arrecadacao/mensal', getMensal, 'sessao'],
   ['GET', '/disponibilidade', getDisponibilidade],
+  ['GET', '/calendario/feriados/:ano', getFeriados],
   ['POST', '/agendamentos', postAgendamento],
   ['GET', '/agendamentos/:id', getMeuAgendamento],
   ['PATCH', '/agendamentos/:id/cancelar', patchMeuAgendamento('cancelar')],

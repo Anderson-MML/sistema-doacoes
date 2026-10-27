@@ -118,7 +118,7 @@ export default function Agendar() {
               return (
                 <li key={i.id_item} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
                   <label htmlFor={idCampo} className="font-bold">{i.nome_item}</label>
-                  <div className="flex items-center gap-3">
+                  <div className="flex flex-wrap items-center gap-3">
                     <SeletorQuantidade id={idCampo} valor={i.quantidade} unidade={i.unidade_medida}
                       rotulo={`quantidade de ${i.nome_item}`} erro={erros[idCampo]}
                       aoMudar={(q) => definirQuantidade(i, q)} />
