@@ -1,6 +1,6 @@
 {
   "name": "lar-ternura-api",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "private": true,
   "main": "src/server.js",
   "engines": {
@@ -8,14 +8,16 @@
   },
   "scripts": {
     "start": "node src/server.js",
-    "test": "node --test",
+    "test": "node --test test/brasilapi-feriados.test.js test/calendario-http.test.js test/compatibilidade.test.js test/estrutura.test.js test/e1.test.js test/documentation.test.js",
     "db:migrate": "node scripts/migrate.js",
-    "admin:create": "node scripts/create-admin.js"
+    "admin:create": "node scripts/create-admin.js",
+    "docs:postman": "node scripts/build-postman.js"
   },
   "dependencies": {
+    "dotenv": "16",
     "express": "4",
     "pg": "8",
-    "dotenv": "16"
+    "swagger-ui-dist": "5.34.0"
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.3"

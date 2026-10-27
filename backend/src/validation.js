@@ -87,8 +87,31 @@ function receipt(v){
  return{id_agendamento:v.id_agendamento==null?null:integer(v.id_agendamento,'Agendamento'),id_doador:v.id_doador==null?null:integer(v.id_doador,'Doador'),ocorrido_em:new Date(v.ocorrido_em).toISOString(),itens};
 }
 function uuid(v){if(typeof v!=='string'||!(/^[a-f0-9]{8}-[a-f0-9]{4}-[1-8][a-f0-9]{3}-[89ab][a-f0-9]{3}-[a-f0-9]{12}$/i).test(v))fail(422,'CHAVE_OBRIGATORIA','Envie Idempotency-Key como UUID.');return v.toLowerCase();}
+function bookingFilters(q){
+ const data=q.data===undefined?null:date(q.data);
+ let statuses=null;
+ if(q.status!==undefined){
+  if(typeof q.status!=='string')fail(422,'VALIDACAO','Status inválido.');
+  statuses=q.status.split(',').map(s=>s.trim());
+  if(statuses.length>4||statuses.some(s=>!['Pendente','Confirmado','Concluído','Cancelado'].includes(s)))fail(422,'VALIDACAO','Status inválido.');
+  statuses=[...new Set(statuses)];
+ }
+ return{...pagination(q),data,statuses,q:q.q===undefined?null:string(q.q,'Busca',100)};
+}
+function receiveCompletion(v){
+ object(v,['itens','motivo_pendencias']);
+ const motivo_pendencias=v.motivo_pendencias===undefined?null:string(v.motivo_pendencias,'Motivo das pendências',500);
+ if(v.itens===undefined)return{motivo_pendencias};
+ if(!Array.isArray(v.itens)||v.itens.length>100)fail(422,'VALIDACAO','Informe até 100 itens.');
+ const seen=new Set();
+ const itens=v.itens.map(i=>{object(i,['id_item','quantidade_recebida']);const id_item=integer(i.id_item,'Item');
+  if(seen.has(id_item))fail(422,'VALIDACAO','Produto repetido.');seen.add(id_item);
+  return{id_item,quantidade_recebida:integer(i.quantidade_recebida,'Quantidade recebida',0)};
+ }).sort((a,b)=>a.id_item-b.id_item);
+ return{itens,motivo_pendencias};
+}
 function pagination(q) {
   for(const k of ['limit','offset']) if(q[k]!==undefined && (typeof q[k]!=='string'||!/^\d+$/.test(q[k]))) fail(422,'VALIDACAO','Paginação inválida.');
   return {limit:integer(Number(q.limit??50),'Limite',1,100),offset:integer(Number(q.offset??0),'Deslocamento',0,1000000)};
 }
-module.exports={object,string,integer,id,bigId,need,receipt,uuid,email,date,localTime,slot,validateSlot,booking,item,pagination};
+module.exports={bookingFilters,receiveCompletion,object,string,integer,id,bigId,need,receipt,uuid,email,date,localTime,slot,validateSlot,booking,item,pagination};
