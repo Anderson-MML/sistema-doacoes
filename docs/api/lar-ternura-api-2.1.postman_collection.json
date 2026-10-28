@@ -1214,7 +1214,7 @@
           "name": "POST /admin/agendamentos/{id}/receber-e-concluir — Registrar chegada e concluir agendamento numa transação",
           "request": {
             "method": "POST",
-            "description": "Trava o agendamento e usa a meta aberta atual por produto; sem meta aberta, registra sem vínculo. Aceita atrasados. Idempotência compara administrador, agendamento e corpo, e não permite reutilizar a chave em POST /doacoes. Produto inativo com saldo a receber gera 409. Repetição de concluído não cria doação adicional. Datas de recebimento são atribuídas pelo servidor.",
+            "description": "Trava o agendamento e usa a meta aberta atual por produto; sem meta aberta, registra sem vínculo. Aceita atrasados. Idempotência compara administrador, agendamento e corpo, e não permite reutilizar a chave em POST /doacoes. Produto inativo com saldo a receber gera 409. Repetição de concluído não cria doação adicional. Datas de recebimento são atribuídas pelo servidor. Se a meta mudar enquanto sua trava é obtida, a API relê a seleção. Após cinco tentativas sem estabilização, retorna 409 META_EM_ALTERACAO e desfaz a operação; a mesma chave pode ser usada no retry.",
             "header": [
               {
                 "key": "Idempotency-Key",

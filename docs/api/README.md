@@ -61,3 +61,7 @@ A migração e o `/ready` agora compartilham a validação estrutural das tabela
 ## Entrega E1 — 23/10/2026
 
 Ler `docs/api/ENTREGA-E1-API-2.1.md` a partir da raiz do projeto. Swagger em `/docs/`, contrato em `/openapi.json` e coleção `docs/api/lar-ternura-api-2.1.postman_collection.json`. A busca administrativa aceita q e múltiplos status; a rota receber-e-concluir é atômica. Metas atingidas continuam aceitando promessas enquanto abertas e com produto ativo.
+
+## Correção de concorrência — 26/10/2026
+
+A seleção da meta em receber-e-concluir agora relê após uma renovação concorrente. Novas tentativas que não estabilizam após cinco leituras/travas respondem 409 META_EM_ALTERACAO, com rollback integral e possibilidade de repetir a mesma chave. Guia e evidências: docs/api/CORRECAO-CONCORRENCIA-METAS-26-10-2026.md a partir da raiz do repositório. A suíte PostgreSQL local é executada com PG_BIN configurado e pnpm test:postgres; não usa DATABASE_URL ou Neon.
